@@ -8,8 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --glass: rgba(255, 255, 255, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.9);
             --charcoal: #292F36;
             --deep-red: #A41F13;
         }
@@ -19,10 +19,10 @@
             font-family: 'Prompt', sans-serif; 
             overflow: hidden; 
             background: #ffffff;
-            touch-action: none;
+            touch-action: none; /* ล็อคการเลื่อนหน้าจอของ iPad */
         }
 
-        /* --- UI แผงควบคุม (Liquid Glass) --- */
+        /* --- UI แผงควบคุม (iPad Optimized) --- */
         #ui {
             position: absolute; 
             top: 20px; 
@@ -35,7 +35,7 @@
             border: 1px solid var(--glass-border);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             width: 280px; 
-            z-index: 100; 
+            z-index: 200; 
             max-height: 85vh; 
             overflow-y: auto;
             transition: transform 0.4s ease;
@@ -43,22 +43,25 @@
 
         @media (max-width: 600px) {
             #ui { width: calc(100% - 40px); top: auto; bottom: 20px; left: 20px; max-height: 45vh; padding: 15px; }
-            #ui.hidden { transform: translateY(calc(100% + 40px)); }
+            #ui.hidden { transform: translateY(calc(100% + 50px)); }
             #mobile-toggle { display: block !important; }
         }
 
         #mobile-toggle {
             display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 110; background: var(--charcoal); color: white; border: none; padding: 10px 20px;
+            z-index: 210; background: var(--charcoal); color: white; border: none; padding: 12px 24px;
             border-radius: 30px; font-family: 'Prompt'; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
 
         h2 { margin: 0 0 15px; color: var(--charcoal); text-align: center; font-size: 18px; font-weight: 600; }
-        .group { background: rgba(255, 255, 255, 0.5); padding: 12px; border-radius: 16px; margin-bottom: 10px; border: 1px solid rgba(255, 255, 255, 0.9); }
+        .group { background: rgba(255, 255, 255, 0.6); padding: 12px; border-radius: 16px; margin-bottom: 10px; border: 1px solid rgba(255, 255, 255, 0.9); }
         label { font-size: 12px; font-weight: 600; display: block; margin-bottom: 8px; color: #333; }
         .val-display { float: right; color: var(--deep-red); font-weight: bold; }
-        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--charcoal); }
-        button { width: 100%; padding: 10px; border-radius: 12px; border: none; background: var(--charcoal); color: white; font-family: 'Prompt'; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 5px; font-size: 12px;}
+        
+        /* ปรับ Slider ให้กดง่ายขึ้นบน iPad */
+        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--charcoal); height: 25px; }
+        
+        button { width: 100%; padding: 12px; border-radius: 12px; border: none; background: var(--charcoal); color: white; font-family: 'Prompt'; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 5px; font-size: 13px; }
         
         #status { text-align: center; padding: 12px; border-radius: 12px; font-weight: 600; margin-top: 15px; font-size: 14px; }
 
@@ -83,7 +86,7 @@
 <body>
 
 <div id="instruction-hint">
-    คลิกซ้าย: หมุน | คลิกขวา: ย้ายตำแหน่ง<br>Scroll: ซูม
+    1 นิ้ว: หมุน | 2 นิ้ว: ย้ายตำแหน่ง & ซูม
 </div>
 
 <button id="mobile-toggle" onclick="toggleUI()">ซ่อน/แสดงเมนู</button>
@@ -93,7 +96,7 @@
     
     <div class="group">
         <label>รูปทรงโมเลกุล (VSEPR)</label>
-        <select id="shape" style="width:100%; padding:8px; border-radius:10px; border:1px solid #ddd; font-family:'Prompt';" onchange="initUI()">
+        <select id="shape" style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd; font-family:'Prompt';" onchange="initUI()">
             <optgroup label="รูปทรงสมมาตร">
                 <option value="AX2">AX2 - เส้นตรง</option>
                 <option value="AX3">AX3 - สามเหลี่ยมแบนราบ</option>
@@ -123,7 +126,7 @@
     <div class="group">
         <label>ค่า EN อะตอมกลาง <span id="enC_val" class="val-display">2.5</span></label>
         <input type="range" id="enC" min="0.7" max="4.0" step="0.1" value="2.5" oninput="update()">
-        <button style="background:var(--deep-red);" onclick="resetEN()">รีเซ็ตค่า EN</button>
+        <button style="background:var(--deep-red);" onclick="resetEN()">รีเซ็ตค่า EN ทั้งหมด</button>
     </div>
 
     <div id="outer_controls"></div>
@@ -137,6 +140,7 @@
     let scene, camera, renderer, molecule;
     let isDragging = false, isPanning = false;
     let prevX = 0, prevY = 0, zoom = 10;
+    let initialPinchDist = 0;
     const labelsDiv = document.getElementById('labels-container');
 
     const V = {
@@ -149,15 +153,15 @@
         AX2: { x: [V.eq0, V.oL], e: [] },
         AX3: { x: [V.eq0, V.eq120, V.eq240], e: [] },
         AX4: { x: [V.t1, V.t2, V.t3, V.t4], e: [] },
-        AX5: { x: [V.top, V.bottom, V.eq0, V.eq120, V.eq240], e: [] },
-        AX6: { x: [V.top, V.bottom, V.oR, V.oL, V.oF, V.oB], e: [] },
+        AX5: { x: [V.axialUp, V.axialDown, V.eq0, V.eq120, V.eq240], e: [] },
+        AX6: { x: [V.axialUp, V.axialDown, V.oR, V.oL, V.oF, V.oB], e: [] },
         AX2E: { x: [V.eq120, V.eq240], e: [V.eq0] },
         AX3E: { x: [V.t2, V.t3, V.t4], e: [V.t1] },
         AX2E2: { x: [V.t3, V.t4], e: [V.t1, V.t2] },
-        AX4E: { x: [V.top, V.bottom, V.eq120, V.eq240], e: [V.eq0] },
-        AX3E2: { x: [V.top, V.bottom, V.eq0], e: [V.eq120, V.eq240] },
-        AX5E: { x: [V.bottom, V.oR, V.oL, V.oF, V.oB], e: [V.top] },
-        AX4E2: { x: [V.oR, V.oL, V.oF, V.oB], e: [V.top, V.bottom] }
+        AX4E: { x: [V.axialUp, V.axialDown, V.eq120, V.eq240], e: [V.eq0] },
+        AX3E2: { x: [V.axialUp, V.axialDown, V.eq0], e: [V.eq120, V.eq240] },
+        AX5E: { x: [V.axialDown, V.oR, V.oL, V.oF, V.oB], e: [V.axialUp] },
+        AX4E2: { x: [V.oR, V.oL, V.oF, V.oB], e: [V.axialUp, V.axialDown] }
     };
 
     function init() {
@@ -166,7 +170,6 @@
         
         const aspect = window.innerWidth / window.innerHeight;
         camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
-        
         zoom = (window.innerWidth < 600) ? 14 : 10;
         camera.position.z = zoom;
 
@@ -183,24 +186,40 @@
         molecule = new THREE.Group();
         scene.add(molecule);
 
-        // --- Event Listeners สำหรับเมาส์ (Rotate & Pan) ---
+        // --- แก้ไขการหยุดคำสั่งทะลุ UI ---
+        const uiElement = document.getElementById('ui');
+        ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mousemove', 'mouseup', 'wheel'].forEach(evt => {
+            uiElement.addEventListener(evt, (e) => e.stopPropagation(), {passive: false});
+        });
+
+        // Mouse Controls
         window.addEventListener('mousedown', (e) => {
-            if (e.button === 0) isDragging = true; // คลิกซ้าย หมุน
-            if (e.button === 2 || e.button === 1) isPanning = true; // คลิกขวา หรือ กลาง ย้ายตำแหน่ง
+            if (e.button === 0) isDragging = true;
+            if (e.button === 2 || e.button === 1) isPanning = true;
             prevX = e.clientX; prevY = e.clientY;
         });
         window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
-        window.addEventListener('contextmenu', (e) => e.preventDefault()); // ปิดเมนูคลิกขวา
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
         window.addEventListener('mousemove', handleMove);
         
-        // --- Event Listeners สำหรับ Touch ---
+        // --- iPad Touch Controls (Improved) ---
         window.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) isDragging = true;
-            if (e.touches.length === 2) isPanning = true;
-            prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+            if (e.touches.length === 1) {
+                isDragging = true;
+                prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                isPanning = true;
+                initialPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                prevX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                prevY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            }
         }, {passive: false});
-        window.addEventListener('touchend', () => { isDragging = false; isPanning = false; });
+
         window.addEventListener('touchmove', handleTouch, {passive: false});
+        window.addEventListener('touchend', () => { isDragging = false; isPanning = false; initialPinchDist = 0; });
 
         window.addEventListener('wheel', (e) => {
             zoom = Math.max(3, Math.min(25, zoom + e.deltaY * 0.01));
@@ -208,7 +227,6 @@
         });
 
         window.addEventListener('resize', onWindowResize);
-
         initUI();
         animate();
     }
@@ -218,7 +236,6 @@
             molecule.rotation.y += (e.clientX - prevX) * 0.01;
             molecule.rotation.x += (e.clientY - prevY) * 0.01;
         } else if (isPanning) {
-            // คำนวณระยะการย้ายตำแหน่ง (Pan)
             molecule.position.x += (e.clientX - prevX) * 0.01 * (zoom/10);
             molecule.position.y -= (e.clientY - prevY) * 0.01 * (zoom/10);
         }
@@ -231,10 +248,25 @@
             molecule.rotation.y += dX * 0.01; molecule.rotation.x += dY * 0.01;
             prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
         } else if (isPanning && e.touches.length === 2) {
-            const dX = e.touches[0].clientX - prevX; const dY = e.touches[0].clientY - prevY;
+            // Pinch to Zoom
+            const currentDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            if (initialPinchDist > 0) {
+                const pinchScale = currentDist / initialPinchDist;
+                zoom = Math.max(3, Math.min(25, zoom / pinchScale));
+                camera.position.z = zoom;
+            }
+            initialPinchDist = currentDist;
+
+            // Two-finger Pan
+            const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            const dX = centerX - prevX; const dY = centerY - prevY;
             molecule.position.x += dX * 0.01 * (zoom/10);
             molecule.position.y -= dY * 0.01 * (zoom/10);
-            prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+            prevX = centerX; prevY = centerY;
         }
     }
 
@@ -280,7 +312,6 @@
 
         data.x.forEach((posArr, i) => {
             const enO = parseFloat(document.getElementById('enO'+i).value);
-            document.getElementById('enO'+i+'_val').innerText = enO.toFixed(1);
             const pos = new THREE.Vector3(...posArr).multiplyScalar(bondL);
             const oRad = (5.0 - enO) * 0.3;
             const color = (enO !== firstEN) ? 0xA41F13 : 0x8F7A6E;
