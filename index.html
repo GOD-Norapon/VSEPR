@@ -2,24 +2,24 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>บรรลุ VSEPR แบบ Pro Max</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --glass-bg: rgba(255, 255, 255, 0.45);
-            --glass-border: rgba(255, 255, 255, 0.6);
-            --primary-dark: #292F36;
-            --primary-red: #A41F13;
-            --lone-pair-green: #006400;
+            --glass: rgba(255, 255, 255, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --charcoal: #292F36;
+            --deep-red: #A41F13;
         }
 
         body { 
             margin: 0; 
             font-family: 'Prompt', sans-serif; 
             overflow: hidden; 
-            background: radial-gradient(circle, #ffffff 0%, #e9ecef 100%); 
+            background: radial-gradient(circle, #ffffff 0%, #e9ecef 100%);
+            touch-action: none;
         }
 
         /* --- UI แผงควบคุม (Liquid Glass) --- */
@@ -27,9 +27,9 @@
             position: absolute; 
             top: 20px; 
             left: 20px; 
-            background: var(--glass-bg);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             padding: 20px; 
             border-radius: 24px; 
             border: 1px solid var(--glass-border);
@@ -38,58 +38,48 @@
             z-index: 100; 
             max-height: 85vh; 
             overflow-y: auto;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         @media (max-width: 600px) {
-            #ui { width: calc(100% - 40px); top: auto; bottom: 80px; left: 20px; max-height: 35vh; }
-            #credit { padding: 8px 15px; font-size: 12px; }
+            #ui { width: calc(100% - 40px); top: auto; bottom: 20px; left: 20px; max-height: 45vh; padding: 15px; }
+            #ui.hidden { transform: translateY(calc(100% + 40px)); }
+            #mobile-toggle { display: block !important; }
         }
 
-        h2 { margin: 0 0 15px; color: var(--primary-dark); text-align: center; font-size: 20px; font-weight: 600; }
-        
-        .group { 
-            background: rgba(255, 255, 255, 0.6); 
-            padding: 12px; 
-            border-radius: 16px; 
-            margin-bottom: 10px; 
-            border: 1px solid rgba(255, 255, 255, 0.9);
+        #mobile-toggle {
+            display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 110; background: var(--charcoal); color: white; border: none; padding: 10px 20px;
+            border-radius: 30px; font-family: 'Prompt'; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-        
+
+        h2 { margin: 0 0 15px; color: var(--charcoal); text-align: center; font-size: 20px; font-weight: 600; }
+        .group { background: rgba(255, 255, 255, 0.5); padding: 12px; border-radius: 16px; margin-bottom: 10px; border: 1px solid rgba(255, 255, 255, 0.9); }
         label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px; color: #444; }
-        .val-display { float: right; color: var(--primary-red); font-weight: bold; }
-        
-        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--primary-dark); }
-        
-        button { 
-            width: 100%; padding: 10px; border-radius: 12px; border: none; 
-            background: var(--primary-dark); color: white; font-family: 'Prompt';
-            font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 5px;
-        }
-        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.15); }
+        .val-display { float: right; color: var(--deep-red); font-weight: bold; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--charcoal); }
+        button { width: 100%; padding: 10px; border-radius: 12px; border: none; background: var(--charcoal); color: white; font-family: 'Prompt'; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 5px; }
+        button:hover { opacity: 0.9; }
+        #status { text-align: center; padding: 12px; border-radius: 12px; font-weight: 600; margin-top: 15px; font-size: 14px; }
 
-        #status { text-align: center; padding: 12px; border-radius: 12px; font-weight: 600; margin-top: 15px; text-transform: uppercase; }
-
-        /* --- Credit Card 🤔 (ย้ายมาล่างขวา) --- */
+        /* --- Credit Card 🤔 --- */
         #credit {
-            position: fixed; bottom: 20px; right: 20px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            padding: 12px 20px; border-radius: 18px;
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-            color: var(--primary-dark); font-weight: 600; font-size: 14px;
-            display: flex; align-items: center; gap: 10px; z-index: 110;
+            position: fixed; bottom: 20px; right: 20px; background: var(--glass); backdrop-filter: blur(10px);
+            padding: 10px 18px; border-radius: 15px; border: 1px solid var(--glass-border);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: var(--charcoal); font-weight: 600; font-size: 13px;
+            display: flex; align-items: center; gap: 8px; z-index: 90;
         }
 
         .atom-label {
-            position: absolute; background: rgba(255,255,255,0.95);
-            padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: bold;
-            pointer-events: none; transform: translate(-50%, -50%); z-index: 50;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 1px solid #ddd;
+            position: absolute; background: rgba(255,255,255,0.9); padding: 2px 8px; border-radius: 8px;
+            font-size: 10px; font-weight: bold; pointer-events: none; transform: translate(-50%, -50%);
+            z-index: 50; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
     </style>
 </head>
 <body>
+
+<button id="mobile-toggle" onclick="toggleUI()">ซ่อน/แสดงเมนู</button>
 
 <div id="ui">
     <h2>บรรลุ VSEPR แบบ Pro Max</h2>
@@ -105,10 +95,10 @@
                 <option value="AX6">AX6 - ทรงแปดหน้า</option>
             </optgroup>
             <optgroup label="รูปทรงไม่สมมาตร (E)">
-                <option value="AX2E">AX2E - มุมงอ (120°)</option>
+                <option value="AX2E">AX2E - มุมงอ</option>
                 <option value="AX3E">AX3E - พีระมิดฐานสามเหลี่ยม</option>
-                <option value="AX2E2">AX2E2 - มุมงอ (104.5°)</option>
-                <option value="AX4E">AX4E - ทรงสี่หน้าบิดเบี้ยว</option>
+                <option value="AX2E2">AX2E2 - มุมงอ (V-Shape)</option>
+                <option value="AX4E">AX4E - See-saw</option>
                 <option value="AX3E2">AX3E2 - รูปตัว T</option>
                 <option value="AX5E">AX5E - พีระมิดฐานสี่เหลี่ยม</option>
                 <option value="AX4E2">AX4E2 - สี่เหลี่ยมแบนราบ</option>
@@ -117,19 +107,19 @@
     </div>
 
     <div class="group">
-        <label>ระยะพันธะ <span id="bondL_val" class="val-display">2.0</span></label>
+        <label>ระยะห่างพันธะ <span id="bondL_val" class="val-display">2.0</span></label>
         <input type="range" id="bondL" min="1.0" max="4.0" step="0.1" value="2.0" oninput="update()">
         <button onclick="resetRotation()">คืนค่ามุมมอง</button>
     </div>
 
     <div class="group">
-        <label>Center Atom EN <span id="enC_val" class="val-display">2.5</span></label>
+        <label>ค่า EN อะตอมกลาง <span id="enC_val" class="val-display">2.5</span></label>
         <input type="range" id="enC" min="0.7" max="4.0" step="0.1" value="2.5" oninput="update()">
-        <button style="background:var(--primary-red);" onclick="resetEN()">รีเซ็ตค่า EN</button>
+        <button style="background:var(--deep-red);" onclick="resetEN()">รีเซ็ตค่า EN</button>
     </div>
 
     <div id="outer_controls"></div>
-    <div id="status">Ready</div>
+    <div id="status">กำลังเตรียมการ...</div>
 </div>
 
 <div id="labels-container"></div>
@@ -141,38 +131,42 @@
     const labelsDiv = document.getElementById('labels-container');
 
     const V = {
-        top: [0, 1, 0], bottom: [0, -1, 0], eq0: [1, 0, 0], eq120: [-0.5, 0, 0.866], eq240: [-0.5, 0, -0.866],
-        t1: [0, 1, 0], t2: [0.94, -0.33, 0], t3: [-0.47, -0.33, 0.816], t4: [-0.47, -0.33, -0.816],
-        oR: [1, 0, 0], oL: [-1, 0, 0], oF: [0, 0, 1], oB: [0, 0, -1]
+        axialUp: [0,1,0], axialDown: [0,-1,0], eq0: [1,0,0], eq120: [-0.5,0,0.866], eq240: [-0.5,0,-0.866],
+        t1:[0,1,0], t2:[0.94,-0.33,0], t3:[-0.47,-0.33,0.816], t4:[-0.47,-0.33,-0.816],
+        oR:[1,0,0], oL:[-1,0,0], oF:[0,0,1], oB:[0,0,-1]
     };
 
     const SHAPES = {
         AX2: { x: [V.eq0, V.oL], e: [] },
         AX3: { x: [V.eq0, V.eq120, V.eq240], e: [] },
         AX4: { x: [V.t1, V.t2, V.t3, V.t4], e: [] },
-        AX5: { x: [V.top, V.bottom, V.eq0, V.eq120, V.eq240], e: [] },
-        AX6: { x: [V.top, V.bottom, V.oR, V.oL, V.oF, V.oB], e: [] },
+        AX5: { x: [V.axialUp, V.axialDown, V.eq0, V.eq120, V.eq240], e: [] },
+        AX6: { x: [V.axialUp, V.axialDown, V.oR, V.oL, V.oF, V.oB], e: [] },
         AX2E: { x: [V.eq120, V.eq240], e: [V.eq0] },
         AX3E: { x: [V.t2, V.t3, V.t4], e: [V.t1] },
         AX2E2: { x: [V.t3, V.t4], e: [V.t1, V.t2] },
-        AX4E: { x: [V.top, V.bottom, V.eq120, V.eq240], e: [V.eq0] },
-        AX3E2: { x: [V.top, V.bottom, V.eq0], e: [V.eq120, V.eq240] },
-        AX5E: { x: [V.bottom, V.oR, V.oL, V.oF, V.oB], e: [V.top] },
-        AX4E2: { x: [V.oR, V.oL, V.oF, V.oB], e: [V.top, V.bottom] }
+        AX4E: { x: [V.axialUp, V.axialDown, V.eq120, V.eq240], e: [V.eq0] },
+        AX3E2: { x: [V.axialUp, V.axialDown, V.eq0], e: [V.eq120, V.eq240] },
+        AX5E: { x: [V.axialDown, V.oR, V.oL, V.oF, V.oB], e: [V.axialUp] },
+        AX4E2: { x: [V.oR, V.oL, V.oF, V.oB], e: [V.axialUp, V.axialDown] }
     };
 
     function init() {
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0xffffff);
-        camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const aspect = window.innerWidth / window.innerHeight;
+        camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+        
+        zoom = (window.innerWidth < 600) ? 14 : 10;
         camera.position.z = zoom;
+        if (window.innerWidth < 600) camera.position.y = -2; 
 
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
         const light = new THREE.DirectionalLight(0xffffff, 0.6);
         light.position.set(5, 10, 7);
         scene.add(light);
@@ -180,72 +174,69 @@
         molecule = new THREE.Group();
         scene.add(molecule);
 
-        document.addEventListener('mousedown', () => isDragging = true);
-        document.addEventListener('mouseup', () => isDragging = false);
-        document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                molecule.rotation.y += (e.clientX - prevX) * 0.01;
-                molecule.rotation.x += (e.clientY - prevY) * 0.01;
-            }
-            prevX = e.clientX; prevY = e.clientY;
-        });
-        document.addEventListener('wheel', (e) => {
-            zoom += e.deltaY * 0.01;
-            zoom = Math.max(3, Math.min(20, zoom));
-            camera.position.z = zoom;
-        });
+        window.addEventListener('mousedown', () => isDragging = true);
+        window.addEventListener('mouseup', () => isDragging = false);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('touchstart', (e) => { isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; }, {passive: false});
+        window.addEventListener('touchend', () => isDragging = false);
+        window.addEventListener('touchmove', handleTouch, {passive: false});
+        window.addEventListener('wheel', (e) => { zoom = Math.max(3, Math.min(25, zoom + e.deltaY * 0.01)); camera.position.z = zoom; });
+        window.addEventListener('resize', onWindowResize);
 
         initUI();
         animate();
     }
 
-    function resetRotation() { molecule.rotation.set(0, 0, 0); zoom = 10; camera.position.z = 10; }
-    function resetEN() {
-        document.getElementById('enC').value = 2.5;
-        document.querySelectorAll('.en-outer').forEach(i => i.value = 3.0);
-        update();
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        if (window.innerWidth < 600) camera.position.y = -2; else camera.position.y = 0;
     }
+
+    function handleMove(e) {
+        if (isDragging) { molecule.rotation.y += (e.clientX - prevX) * 0.01; molecule.rotation.x += (e.clientY - prevY) * 0.01; }
+        prevX = e.clientX; prevY = e.clientY;
+    }
+
+    function handleTouch(e) {
+        if (isDragging) {
+            const dX = e.touches[0].clientX - prevX; const dY = e.touches[0].clientY - prevY;
+            molecule.rotation.y += dX * 0.01; molecule.rotation.x += dY * 0.01;
+            prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+        }
+    }
+
+    function toggleUI() { document.getElementById('ui').classList.toggle('hidden'); }
+    function resetRotation() { molecule.rotation.set(0, 0, 0); zoom = (window.innerWidth < 600) ? 14 : 10; camera.position.z = zoom; }
+    function resetEN() { document.getElementById('enC').value = 2.5; document.querySelectorAll('.en-outer').forEach(i => i.value = 3.0); update(); }
 
     function initUI() {
         const shape = document.getElementById('shape').value;
         const container = document.getElementById('outer_controls');
         container.innerHTML = '';
         SHAPES[shape].x.forEach((_, i) => {
-            const div = document.createElement('div');
-            div.className = 'group';
-            div.innerHTML = `<label>อะตอม #${i+1} EN <span id="enO${i}_val" class="val-display">3.0</span></label>
+            const div = document.createElement('div'); div.className = 'group';
+            div.innerHTML = `<label>อะตอมล้อมรอบ ${i+1} EN <span id="enO${i}_val" class="val-display">3.0</span></label>
                              <input type="range" class="en-outer" id="enO${i}" min="0.7" max="4.0" step="0.1" value="3.0" oninput="update()">`;
             container.appendChild(div);
         });
         update();
     }
 
-    function createArrow(dir, origin, length, color, thick) {
-        const group = new THREE.Group();
-        const hLen = 0.6, sLen = Math.max(0.1, length - hLen);
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(thick, thick, sLen, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
-        shaft.position.y = sLen / 2; shaft.renderOrder = 100; group.add(shaft);
-        const head = new THREE.Mesh(new THREE.ConeGeometry(thick * 3, hLen, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
-        head.position.y = sLen + hLen/2; head.renderOrder = 101; group.add(head);
-        group.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
-        group.position.copy(origin);
-        return group;
-    }
-
     function update() {
-        molecule.clear();
-        labelsDiv.innerHTML = '';
+        molecule.clear(); labelsDiv.innerHTML = '';
         const shapeKey = document.getElementById('shape').value;
         const enC = parseFloat(document.getElementById('enC').value);
         const bondL = parseFloat(document.getElementById('bondL').value);
         document.getElementById('enC_val').innerText = enC.toFixed(1);
         document.getElementById('bondL_val').innerText = bondL.toFixed(1);
 
-        const cRad = (5.0 - enC) * 0.3;
-        molecule.add(new THREE.Mesh(new THREE.SphereGeometry(cRad, 32, 32), new THREE.MeshStandardMaterial({ color: 0x292F36 })));
-        addLabel("ศูนย์กลาง ("+enC.toFixed(1)+")", new THREE.Vector3(0,0,0), cRad);
-
         const data = SHAPES[shapeKey];
+        const centerRad = (5.0 - enC) * 0.3;
+        molecule.add(new THREE.Mesh(new THREE.SphereGeometry(centerRad, 32, 32), new THREE.MeshStandardMaterial({ color: 0x292F36 })));
+        addLabel("อะตอมกลาง ("+enC.toFixed(1)+")", new THREE.Vector3(0,0,0), centerRad, 'atom-label');
+
         let netV = new THREE.Vector3(0, 0, 0);
         const firstEN = document.getElementById('enO0') ? parseFloat(document.getElementById('enO0').value) : 3.0;
 
@@ -256,9 +247,9 @@
             const oRad = (5.0 - enO) * 0.3;
             const color = (enO !== firstEN) ? 0xA41F13 : 0x8F7A6E;
 
-            const atom = new THREE.Mesh(new THREE.SphereGeometry(oRad, 32, 32), new THREE.MeshStandardMaterial({ color: color }));
-            atom.position.copy(pos); molecule.add(atom);
-            addLabel("#"+(i+1)+" ("+enO.toFixed(1)+")", pos, oRad);
+            molecule.add(new THREE.Mesh(new THREE.SphereGeometry(oRad, 32, 32), new THREE.MeshStandardMaterial({ color: color })));
+            molecule.children[molecule.children.length - 1].position.copy(pos);
+            addLabel((i+1)+" ("+enO.toFixed(1)+")", pos, oRad, 'atom-label');
 
             const bond = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, pos.length(), 12), new THREE.MeshStandardMaterial({ color: 0x292F36 }));
             bond.position.copy(pos.clone().multiplyScalar(0.5));
@@ -268,50 +259,54 @@
             const diff = enO - enC;
             if (Math.abs(diff) > 0.01) {
                 const vDir = diff > 0 ? pos.clone().normalize() : pos.clone().normalize().negate();
-                const start = diff > 0 ? new THREE.Vector3(0,0,0) : pos;
-                molecule.add(createArrow(vDir, start, Math.abs(diff) * 2.5, 0x6c5ce7, 0.07));
+                molecule.add(createArrow(vDir, (diff > 0 ? new THREE.Vector3(0,0,0) : pos), Math.abs(diff) * 2.5, 0x6c5ce7, 0.06));
                 netV.add(vDir.clone().multiplyScalar(Math.abs(diff)));
             }
         });
 
         data.e.forEach(posArr => {
             const ePos = new THREE.Vector3(...posArr).multiplyScalar(bondL * 0.5);
-            const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), new THREE.MeshStandardMaterial({ 
-                color: 0x006400, transparent: true, opacity: 0.4, wireframe: true 
-            }));
-            lobe.position.copy(ePos);
-            molecule.add(lobe);
+            molecule.add(new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), new THREE.MeshStandardMaterial({ color: 0x004d40, transparent: true, opacity: 0.4, wireframe: true })));
+            molecule.children[molecule.children.length - 1].position.copy(ePos);
         });
 
         const st = document.getElementById('status');
         if (netV.length() > 0.1) {
             molecule.add(createArrow(netV.clone().normalize(), new THREE.Vector3(0,0,0), netV.length()*1.2 + 1.5, 0xff9100, 0.12));
-            st.innerText = "โมเลกุลมีขั้ว (POLAR)"; st.style.background = "rgba(255, 243, 224, 0.8)"; st.style.color="#e65100";
+            st.innerText = "สภาพขั้ว: มีขั้ว"; st.style.background = "rgba(255, 243, 224, 0.8)"; st.style.color="#e65100";
         } else {
-            st.innerText = "โมเลกุลไม่มีขั้ว (NON-POLAR)"; st.style.background = "rgba(232, 245, 233, 0.8)"; st.style.color="#2e7d32";
+            st.innerText = "สภาพขั้ว: ไม่มีขั้ว"; st.style.background = "rgba(232, 245, 233, 0.8)"; st.style.color="#2e7d32";
         }
     }
 
-    function addLabel(txt, pos, rad) {
-        const d = document.createElement('div'); d.className = 'atom-label'; d.innerText = txt;
+    function createArrow(dir, origin, length, color, thick) {
+        const g = new THREE.Group(); const hL = 0.6, sL = Math.max(0.1, length - hL);
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(thick, thick, sL, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
+        shaft.position.y = sL/2; shaft.renderOrder = 100; g.add(shaft);
+        const head = new THREE.Mesh(new THREE.ConeGeometry(thick*3, hL, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
+        head.position.y = sL+hL/2; head.renderOrder = 101; g.add(head);
+        g.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+        g.position.copy(origin); return g;
+    }
+
+    function addLabel(txt, pos, rad, className) {
+        const d = document.createElement('div'); d.className = className; d.innerText = txt;
         d.dataset.x = pos.x; d.dataset.y = pos.y; d.dataset.z = pos.z; d.dataset.rad = rad;
         labelsDiv.appendChild(d);
     }
 
     function animate() {
-        requestAnimationFrame(animate); 
-        molecule.updateMatrixWorld();
+        requestAnimationFrame(animate); molecule.updateMatrixWorld();
         document.querySelectorAll('.atom-label').forEach(el => {
             const lp = new THREE.Vector3(parseFloat(el.dataset.x), parseFloat(el.dataset.y), parseFloat(el.dataset.z));
             const wp = lp.applyMatrix4(molecule.matrixWorld); wp.project(camera);
             el.style.left = (wp.x * .5 + .5) * window.innerWidth + 'px';
-            el.style.top = (wp.y * -.5 + .5) * window.innerHeight - (parseFloat(el.dataset.rad) * 50 + 20) + 'px';
+            el.style.top = (wp.y * -.5 + .5) * window.innerHeight - (parseFloat(el.dataset.rad)*50+20) + 'px';
             el.style.display = wp.z > 1 ? 'none' : 'block';
         });
         renderer.render(scene, camera);
     }
     window.onload = init;
-    window.onresize = () => { renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); };
 </script>
 </body>
 </html>
