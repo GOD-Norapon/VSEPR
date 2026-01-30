@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>บรรลุสภาพขั้ว Pro Max</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; font-family: 'Tahoma', sans-serif; overflow: hidden; background: #ffffff; }
+        
+        /* แผงควบคุมด้านซ้าย */
+        #ui {
+            position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.98);
+            padding: 15px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            width: 290px; z-index: 100; max-height: 95vh; overflow-y: auto; border: 1px solid #ddd;
+        }
+        h2 { margin: 0 0 10px; color: #1e3799; text-align: center; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; }
+        
+        .group { background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 5px solid #1e3799; }
+        label { font-size: 12px; font-weight: bold; display: block; margin-bottom: 5px; color: #333; }
+        .val-display { float: right; color: #1e3799; font-family: monospace; font-weight: bold; }
+        
+        button { width: 100%; padding: 10px; border-radius: 6px; border: none; background: #1e3799; color: white; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        button:hover { background: #0c2461; }
+
+        #status { text-align: center; padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 10px; }
+
+        /* ป้ายกำกับอะตอม */
+        .atom-label {
+            position: absolute; background: rgba(255,255,255,0.95);
+            padding: 2px 6px; border: 1px solid #1e3799; border-radius: 4px;
+            font-size: 11px; font-weight: bold; pointer-events: none;
+            transform: translate(-50%, -50%); z-index: 50; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* เครดิตมุมขวาล่าง */
+        #credit {
+            position: fixed; bottom: 10px; right: 10px; font-size: 14px;
+            font-weight: bold; color: #1e3799; background: rgba(255,255,255,0.7);
+            padding: 5px 10px; border-radius: 5px; z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <h2>บรรลุสภาพขั้ว Pro Max</h2>
+    
+    <div class="group">
+        <label>รูปร่าง (VSEPR Shape)</label>
+        <select id="shape" style="width:100%; padding:5px;" onchange="initUI()">
+            <optgroup label="Symmetric">
+                <option value="AX2">AX2 - Linear</option>
+                <option value="AX3">AX3 - Trigonal Planar</option>
+                <option value="AX4">AX4 - Tetrahedral</option>
+                <option value="AX5">AX5 - Trigonal Bipyramidal</option>
+                <option value="AX6">AX6 - Octahedral</option>
+            </optgroup>
+            <optgroup label="Asymmetric (Lone Pairs)">
+                <option value="AX2E">AX2E - Bent (120°)</option>
+                <option value="AX3E">AX3E - Trigonal Pyramidal</option>
+                <option value="AX2E2">AX2E2 - Bent (104.5°)</option>
+                <option value="AX4E">AX4E - See-saw</option>
+                <option value="AX3E2">AX3E2 - T-shaped</option>
+                <option value="AX5E">AX5E - Square Pyramidal</option>
+                <option value="AX4E2">AX4E2 - Square Planar</option>
+            </optgroup>
+        </select>
+    </div>
+
+    <div class="group" style="border-left-color: #20bf6b;">
+        <label>ความยาวพันธะ: <span id="bondL_val" class="val-display">2.0</span></label>
+        <input type="range" id="bondL" min="1.0" max="4.5" step="0.1" value="2.0" oninput="update()">
+        <button onclick="resetRotation()">Reset Rotation</button>
+    </div>
+
+    <div class="group" style="border-left-color: #0c2461;">
+        <label>Center Atom EN: <span id="enC_val" class="val-display">2.5</span></label>
+        <input type="range" id="enC" min="0.7" max="4.0" step="0.1" value="2.5" oninput="update()">
+    </div>
+
+    <div id="outer_controls"></div>
+    <div id="status">Ready</div>
+</div>
+
+<div id="labels-container"></div>
+<div id="credit">lnwToon005</div>
+
+<script>
+    let scene, camera, renderer, molecule;
+    let isDragging = false, prevX = 0, prevY = 0;
+    const labelsDiv = document.getElementById('labels-container');
+
+    const V = {
+        top: [0, 1, 0], bottom: [0, -1, 0], eq0: [1, 0, 0], eq120: [-0.5, 0, 0.866], eq240: [-0.5, 0, -0.866],
+        t1: [0, 1, 0], t2: [0.94, -0.33, 0], t3: [-0.47, -0.33, 0.816], t4: [-0.47, -0.33, -0.816],
+        oR: [1, 0, 0], oL: [-1, 0, 0], oF: [0, 0, 1], oB: [0, 0, -1]
+    };
+
+    const SHAPES = {
+        AX2:   { x: [V.eq0, V.oL], e: [] },
+        AX3:   { x: [V.eq0, V.eq120, V.eq240], e: [] },
+        AX4:   { x: [V.t1, V.t2, V.t3, V.t4], e: [] },
+        AX5:   { x: [V.top, V.bottom, V.eq0, V.eq120, V.eq240], e: [] },
+        AX6:   { x: [V.top, V.bottom, V.oR, V.oL, V.oF, V.oB], e: [] },
+        AX2E:  { x: [V.eq120, V.eq240], e: [V.eq0] },
+        AX3E:  { x: [V.t2, V.t3, V.t4], e: [V.t1] },
+        AX2E2: { x: [V.t3, V.t4], e: [V.t1, V.t2] },
+        AX4E:  { x: [V.top, V.bottom, V.eq120, V.eq240], e: [V.eq0] },
+        AX3E2: { x: [V.top, V.bottom, V.eq0], e: [V.eq120, V.eq240] },
+        AX5E:  { x: [V.bottom, V.oR, V.oL, V.oF, V.oB], e: [V.top] },
+        AX4E2: { x: [V.oR, V.oL, V.oF, V.oB], e: [V.top, V.bottom] }
+    };
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 5, 10);
+        camera.lookAt(0,0,0);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const light = new THREE.DirectionalLight(0xffffff, 0.8);
+        light.position.set(5, 10, 7);
+        scene.add(light);
+
+        molecule = new THREE.Group();
+        scene.add(molecule);
+
+        document.addEventListener('mousedown', () => isDragging = true);
+        document.addEventListener('mouseup', () => isDragging = false);
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                molecule.rotation.y += (e.clientX - prevX) * 0.01;
+                molecule.rotation.x += (e.clientY - prevY) * 0.01;
+            }
+            prevX = e.clientX; prevY = e.clientY;
+        });
+
+        initUI();
+        animate();
+    }
+
+    function resetRotation() { molecule.rotation.set(0, 0, 0); }
+
+    function getRadius(en) { return (5.0 - en) * 0.35; } // ปรับขนาดอะตอมให้ต่างกันชัดเจน
+
+    function initUI() {
+        const shape = document.getElementById('shape').value;
+        const container = document.getElementById('outer_controls');
+        container.innerHTML = '';
+        SHAPES[shape].x.forEach((_, i) => {
+            const div = document.createElement('div');
+            div.className = 'group';
+            div.style.borderLeftColor = '#eb2f06';
+            div.innerHTML = `
+                <label>อะตอม #${i+1} EN: <span id="enO${i}_val" class="val-display">3.0</span></label>
+                <input type="range" id="enO${i}" min="0.7" max="4.0" step="0.1" value="3.0" oninput="update()">
+            `;
+            container.appendChild(div);
+        });
+        update();
+    }
+
+    function createArrow(dir, origin, length, color, thick) {
+        const group = new THREE.Group();
+        const hLen = 0.5, sLen = Math.max(0.1, length - hLen);
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(thick, thick, sLen, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
+        shaft.position.y = sLen / 2; shaft.renderOrder = 100; group.add(shaft);
+        const head = new THREE.Mesh(new THREE.ConeGeometry(thick * 3, hLen, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
+        head.position.y = sLen + hLen/2; head.renderOrder = 101; group.add(head);
+        group.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+        group.position.copy(origin);
+        return group;
+    }
+
+    function createLabel(txt, pos, rad) {
+        const d = document.createElement('div');
+        d.className = 'atom-label'; d.innerText = txt;
+        d.setAttribute('data-x', pos.x); d.setAttribute('data-y', pos.y); d.setAttribute('data-z', pos.z); d.setAttribute('data-rad', rad);
+        labelsDiv.appendChild(d);
+    }
+
+    function update() {
+        molecule.clear();
+        labelsDiv.innerHTML = '';
+        const shapeKey = document.getElementById('shape').value;
+        const enC = parseFloat(document.getElementById('enC').value);
+        const bondL = parseFloat(document.getElementById('bondL').value);
+        document.getElementById('enC_val').innerText = enC.toFixed(1);
+        document.getElementById('bondL_val').innerText = bondL.toFixed(1);
+
+        const cRad = getRadius(enC);
+        molecule.add(new THREE.Mesh(new THREE.SphereGeometry(cRad, 32, 32), new THREE.MeshStandardMaterial({ color: 0x0c2461 })));
+        createLabel("Center (EN:"+enC.toFixed(1)+")", new THREE.Vector3(0,0,0), cRad);
+
+        const data = SHAPES[shapeKey];
+        let netV = new THREE.Vector3(0, 0, 0);
+        const firstEN = document.getElementById('enO0') ? parseFloat(document.getElementById('enO0').value) : 3.0;
+
+        data.x.forEach((posArr, i) => {
+            const enO = parseFloat(document.getElementById('enO'+i).value);
+            document.getElementById('enO'+i+'_val').innerText = enO.toFixed(1);
+            const pos = new THREE.Vector3(...posArr).multiplyScalar(bondL);
+            const dir = pos.clone().normalize();
+            const oRad = getRadius(enO);
+            const color = (enO !== firstEN) ? 0xfeca57 : 0xeb2f06;
+
+            const atom = new THREE.Mesh(new THREE.SphereGeometry(oRad, 32, 32), new THREE.MeshStandardMaterial({ color: color }));
+            atom.position.copy(pos); molecule.add(atom);
+            createLabel("#"+(i+1)+" (EN:"+enO.toFixed(1)+")", pos, oRad);
+
+            const bond = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, pos.length(), 12), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+            bond.position.copy(pos.clone().multiplyScalar(0.5));
+            bond.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
+            molecule.add(bond);
+
+            const diff = enO - enC;
+            if (Math.abs(diff) > 0.01) {
+                const vDir = diff > 0 ? dir : dir.clone().negate();
+                const start = diff > 0 ? new THREE.Vector3(0,0,0) : pos;
+                molecule.add(createArrow(vDir, start, Math.abs(diff) * 1.5, 0x6c5ce7, 0.13));
+                netV.add(vDir.clone().multiplyScalar(Math.abs(diff)));
+            }
+        });
+
+        data.e.forEach(posArr => {
+            const ePos = new THREE.Vector3(...posArr).multiplyScalar(bondL * 0.4);
+            const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 16), new THREE.MeshStandardMaterial({ color: 0x00d2d3, transparent: true, opacity: 0.35, wireframe: true }));
+            lobe.position.copy(ePos); molecule.add(lobe);
+        });
+
+        const st = document.getElementById('status');
+        if (netV.length() > 0.08) {
+            molecule.add(createArrow(netV.clone().normalize(), new THREE.Vector3(0,0,0), netV.length()*0.7 + 1.2, 0xf19066, 0.22));
+            st.innerText = "โมเลกุลมีขั้ว (Polar)"; st.style.background = "#fff3e0"; st.style.color="#e65100";
+        } else {
+            st.innerText = "โมเลกุลไม่มีขั้ว (Non-polar)"; st.style.background = "#e8f5e9"; st.style.color="#2e7d32";
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        molecule.updateMatrixWorld();
+        document.querySelectorAll('.atom-label').forEach(el => {
+            const lp = new THREE.Vector3(parseFloat(el.getAttribute('data-x')), parseFloat(el.getAttribute('data-y')), parseFloat(el.getAttribute('data-z')));
+            const rad = parseFloat(el.getAttribute('data-rad'));
+            const wp = lp.applyMatrix4(molecule.matrixWorld);
+            wp.project(camera);
+            el.style.left = (wp.x * .5 + .5) * window.innerWidth + 'px';
+            el.style.top = (wp.y * -.5 + .5) * window.innerHeight - (rad * 45 + 20) + 'px';
+            el.style.display = wp.z > 1 ? 'none' : 'block';
+        });
+        renderer.render(scene, camera);
+    }
+    window.onload = init;
+    window.onresize = () => { renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); };
+</script>
+</body>
+</html>
