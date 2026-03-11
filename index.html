@@ -8,10 +8,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --glass: rgba(255, 255, 255, 0.75);
+            --glass: rgba(255, 255, 255, 0.85);
             --glass-border: rgba(255, 255, 255, 0.9);
             --charcoal: #292F36;
             --deep-red: #A41F13;
+            --vector-blue: #0984e3;
         }
 
         body { 
@@ -19,10 +20,9 @@
             font-family: 'Prompt', sans-serif; 
             overflow: hidden; 
             background: #ffffff;
-            touch-action: none; /* ล็อคการเลื่อนหน้าจอของ iPad/iPhone */
+            touch-action: none; 
         }
 
-        /* --- UI แผงควบคุม (Liquid Glass) --- */
         #ui {
             position: absolute; 
             top: 20px; 
@@ -30,12 +30,12 @@
             background: var(--glass);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            padding: 20px; 
+            padding: 15px 20px; 
             border-radius: 24px; 
             border: 1px solid var(--glass-border);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
             width: 280px; 
-            z-index: 100; 
+            z-index: 200; 
             max-height: 85vh; 
             overflow-y: auto;
             transition: transform 0.4s ease;
@@ -45,51 +45,69 @@
             #ui { width: calc(100% - 40px); top: auto; bottom: 20px; left: 20px; max-height: 45vh; padding: 15px; }
             #ui.hidden { transform: translateY(calc(100% + 50px)); }
             #mobile-toggle { display: block !important; }
-            
-            /* ย้ายเครดิตไปมุมบนซ้ายสำหรับมือถือ */
-            #credit { bottom: auto !important; right: auto !important; top: 20px !important; left: 20px !important; }
         }
 
         #mobile-toggle {
             display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 110; background: var(--charcoal); color: white; border: none; padding: 10px 20px;
+            z-index: 210; background: var(--charcoal); color: white; border: none; padding: 10px 20px;
             border-radius: 30px; font-family: 'Prompt'; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
 
-        h2 { margin: 0 0 15px; color: var(--charcoal); text-align: center; font-size: 18px; font-weight: 600; }
-        .group { background: rgba(255, 255, 255, 0.5); padding: 12px; border-radius: 16px; margin-bottom: 10px; border: 1px solid rgba(255, 255, 255, 0.9); }
+        h2 { margin: 0 0 10px; color: var(--charcoal); text-align: center; font-size: 18px; font-weight: 600; }
+        .group { background: rgba(255, 255, 255, 0.7); padding: 12px; border-radius: 16px; margin-bottom: 8px; border: 1px solid rgba(0, 0, 0, 0.05); }
         label { font-size: 12px; font-weight: 600; display: block; margin-bottom: 5px; color: #333; }
         .val-display { float: right; color: var(--deep-red); font-weight: bold; }
-        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--charcoal); }
-        button { width: 100%; padding: 10px; border-radius: 12px; border: none; background: var(--charcoal); color: white; font-family: 'Prompt'; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 5px; font-size: 12px;}
         
-        #status { text-align: center; padding: 12px; border-radius: 12px; font-weight: 600; margin-top: 15px; font-size: 14px; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--charcoal); height: 20px; }
+        
+        button { width: 100%; padding: 10px; border-radius: 12px; border: none; background: var(--charcoal); color: white; font-family: 'Prompt'; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 5px; font-size: 12px; }
+        button:active { transform: scale(0.98); }
 
-        /* --- Credit Card 🤔 --- */
+        /* ปุ่มพิเศษสำหรับโหมดเวกเตอร์ */
+        #btn-vector {
+            background: var(--vector-blue);
+            font-size: 13px;
+            padding: 12px;
+            margin-top: 10px;
+            box-shadow: 0 4px 10px rgba(9, 132, 227, 0.3);
+            animation: pulse 2s infinite;
+        }
+        #btn-vector.active {
+            background: #d63031;
+            box-shadow: 0 4px 10px rgba(214, 48, 49, 0.3);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(9, 132, 227, 0.5); }
+            70% { box-shadow: 0 0 0 10px rgba(9, 132, 227, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(9, 132, 227, 0); }
+        }
+
+        #status { text-align: center; padding: 12px; border-radius: 12px; font-weight: 600; margin-top: 10px; font-size: 14px; border: 2px solid transparent; }
+
         #credit {
-            position: fixed; bottom: 20px; right: 20px; background: var(--glass); backdrop-filter: blur(10px);
-            padding: 10px 18px; border-radius: 15px; border: 1px solid var(--glass-border);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); color: var(--charcoal); font-weight: 600; font-size: 13px;
+            position: fixed; top: 20px; right: 20px; background: var(--glass); backdrop-filter: blur(10px);
+            padding: 8px 15px; border-radius: 15px; border: 1px solid var(--glass-border);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: var(--charcoal); font-weight: 600; font-size: 12px;
             display: flex; align-items: center; gap: 8px; z-index: 90;
         }
 
+        @media (max-width: 600px) { #credit { top: 20px; left: 20px; right: auto; } }
+
         .atom-label {
-            position: absolute; background: rgba(255,255,255,0.9); padding: 2px 8px; border-radius: 8px;
+            position: absolute; background: rgba(255,255,255,0.95); padding: 2px 6px; border-radius: 6px;
             font-size: 10px; font-weight: bold; pointer-events: none; transform: translate(-50%, -50%);
-            z-index: 50; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 50; border: 1px solid #ddd;
         }
 
-        #instruction-hint {
-            position: fixed; top: 20px; right: 20px; font-size: 10px; color: #aaa; text-align: right; pointer-events: none;
-        }
+        #instruction-hint { position: fixed; bottom: 20px; right: 20px; font-size: 11px; color: #888; text-align: right; pointer-events: none; z-index: 90; }
+        @media (max-width: 600px) { #instruction-hint { top: 60px; bottom: auto; right: 20px; } }
     </style>
 </head>
 <body>
 
-<div id="instruction-hint">
-    1 นิ้ว: หมุน | 2 นิ้ว: เลื่อน & ซูม
-</div>
-
+<div id="instruction-hint">1 นิ้ว: หมุน | 2 นิ้ว: เลื่อน/ซูม</div>
 <button id="mobile-toggle" onclick="toggleUI()">ซ่อน/แสดงเมนู</button>
 
 <div id="ui">
@@ -97,7 +115,7 @@
     
     <div class="group">
         <label>รูปทรงโมเลกุล (VSEPR)</label>
-        <select id="shape" style="width:100%; padding:8px; border-radius:10px; border:1px solid #ddd; font-family:'Prompt';" onchange="initUI()">
+        <select id="shape" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; font-family:'Prompt';" onchange="initUI()">
             <optgroup label="รูปทรงสมมาตร">
                 <option value="AX2">AX2 - เส้นตรง</option>
                 <option value="AX3">AX3 - สามเหลี่ยมแบนราบ</option>
@@ -120,8 +138,10 @@
     <div class="group">
         <label>ระยะห่างพันธะ <span id="bondL_val" class="val-display">2.0</span></label>
         <input type="range" id="bondL" min="1.0" max="4.0" step="0.1" value="2.0" oninput="update()">
-        <button onclick="resetRotation()">คืนค่ามุมมอง</button>
-        <button onclick="resetPosition()" style="background:#555;">รีเซ็ตตำแหน่ง</button>
+        <div style="display:flex; gap:5px;">
+            <button onclick="resetRotation()">คืนค่ามุมมอง</button>
+            <button onclick="resetPosition()" style="background:#7f8fa6;">รีเซ็ตตำแหน่ง</button>
+        </div>
     </div>
 
     <div class="group">
@@ -130,7 +150,10 @@
         <button style="background:var(--deep-red);" onclick="resetEN()">รีเซ็ตค่า EN ทั้งหมด</button>
     </div>
 
-    <div id="outer_controls"></div>
+    <!-- ปุ่มใหม่สำหรับโหมดรวมเวกเตอร์ -->
+    <button id="btn-vector" onclick="toggleVectorMode()">📐 แสดงการรวมเวกเตอร์ (หางต่อหัว)</button>
+
+    <div id="outer_controls" style="margin-top:10px;"></div>
     <div id="status">Ready</div>
 </div>
 
@@ -142,6 +165,7 @@
     let isDragging = false, isPanning = false;
     let prevX = 0, prevY = 0, zoom = 10;
     let initialPinchDist = 0;
+    let showTipToTail = false; // ตัวแปรสถานะโหมดเวกเตอร์
     const labelsDiv = document.getElementById('labels-container');
 
     const V = {
@@ -159,19 +183,19 @@
         AX2E: { x: [V.eq120, V.eq240], e: [V.eq0] },
         AX3E: { x: [V.t2, V.t3, V.t4], e: [V.t1] },
         AX2E2: { x: [V.t3, V.t4], e: [V.t1, V.t2] },
-        AX4E: { x: [V.top, V.bottom, V.eq120, V.eq240], e: [V.eq0] },
-        AX3E2: { x: [V.top, V.bottom, V.eq0], e: [V.eq120, V.eq240] },
-        AX5E: { x: [V.axialDown, V.oR, V.oL, V.oF, V.oB], e: [V.top] },
+        AX4E: { x: [V.axialUp, V.axialDown, V.eq120, V.eq240], e: [V.eq0] },
+        AX3E2: { x: [V.axialUp, V.axialDown, V.eq0], e: [V.eq120, V.eq240] },
+        AX5E: { x: [V.axialDown, V.oR, V.oL, V.oF, V.oB], e: [V.axialUp] },
         AX4E2: { x: [V.oR, V.oL, V.oF, V.oB], e: [V.axialUp, V.axialDown] }
     };
 
     function init() {
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xffffff);
+        scene.background = new THREE.Color(0xf5f6fa);
         
         const aspect = window.innerWidth / window.innerHeight;
         camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
-        zoom = (window.innerWidth < 600) ? 15 : 10;
+        zoom = (window.innerWidth < 600) ? 16 : 11;
         camera.position.z = zoom;
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -180,20 +204,18 @@
         document.body.appendChild(renderer.domElement);
 
         scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-        const light = new THREE.DirectionalLight(0xffffff, 0.6);
+        const light = new THREE.DirectionalLight(0xffffff, 0.5);
         light.position.set(5, 10, 7);
         scene.add(light);
 
         molecule = new THREE.Group();
         scene.add(molecule);
 
-        // ป้องกัน Event ทะลุ UI
         const uiElement = document.getElementById('ui');
         ['touchstart', 'touchmove', 'touchend', 'mousedown', 'wheel'].forEach(evt => {
             uiElement.addEventListener(evt, (e) => e.stopPropagation(), {passive: false});
         });
 
-        // Mouse Controls
         window.addEventListener('mousedown', (e) => {
             if (e.button === 0) isDragging = true;
             if (e.button === 2 || e.button === 1) isPanning = true;
@@ -203,11 +225,9 @@
         window.addEventListener('contextmenu', (e) => e.preventDefault());
         window.addEventListener('mousemove', handleMove);
         
-        // Touch Controls (iPad/iPhone)
         window.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
-                isDragging = true;
-                prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+                isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
             } else if (e.touches.length === 2) {
                 isPanning = true;
                 initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
@@ -218,13 +238,9 @@
 
         window.addEventListener('touchmove', handleTouch, {passive: false});
         window.addEventListener('touchend', () => { isDragging = false; isPanning = false; initialPinchDist = 0; });
-
-        window.addEventListener('wheel', (e) => {
-            zoom = Math.max(3, Math.min(25, zoom + e.deltaY * 0.01));
-            camera.position.z = zoom;
-        });
-
+        window.addEventListener('wheel', (e) => { zoom = Math.max(3, Math.min(30, zoom + e.deltaY * 0.01)); camera.position.z = zoom; });
         window.addEventListener('resize', onWindowResize);
+
         initUI();
         animate();
     }
@@ -249,7 +265,7 @@
             const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             if (initialPinchDist > 0) {
                 const pinchScale = currentDist / initialPinchDist;
-                zoom = Math.max(3, Math.min(25, zoom / pinchScale));
+                zoom = Math.max(3, Math.min(30, zoom / pinchScale));
                 camera.position.z = zoom;
             }
             initialPinchDist = currentDist;
@@ -273,6 +289,20 @@
     function resetPosition() { molecule.position.set(0, 0, 0); }
     function resetEN() { document.getElementById('enC').value = 2.5; document.querySelectorAll('.en-outer').forEach(i => i.value = 3.0); update(); }
 
+    // ฟังก์ชันสลับโหมดเวกเตอร์หางต่อหัว
+    function toggleVectorMode() {
+        showTipToTail = !showTipToTail;
+        const btn = document.getElementById('btn-vector');
+        if (showTipToTail) {
+            btn.classList.add('active');
+            btn.innerHTML = "❌ ปิดโหมดรวมเวกเตอร์";
+        } else {
+            btn.classList.remove('active');
+            btn.innerHTML = "📐 แสดงการรวมเวกเตอร์ (หางต่อหัว)";
+        }
+        update(); // อัปเดตการแสดงผลทันที
+    }
+
     function initUI() {
         const shape = document.getElementById('shape').value;
         const container = document.getElementById('outer_controls');
@@ -295,57 +325,136 @@
         document.getElementById('bondL_val').innerText = bondL.toFixed(1);
 
         const data = SHAPES[shapeKey];
-        const centerRad = (5.0 - enC) * 0.3;
-        molecule.add(new THREE.Mesh(new THREE.SphereGeometry(centerRad, 32, 32), new THREE.MeshStandardMaterial({ color: 0x292F36 })));
-        addLabel("อะตอมกลาง ("+enC.toFixed(1)+")", new THREE.Vector3(0,0,0), centerRad);
+        
+        // ความโปร่งใสของอะตอมในโหมดปกติ vs โหมดรวมเวกเตอร์
+        const opacityAtom = showTipToTail ? 0.15 : 1.0;
+        const opacityCenter = showTipToTail ? 0.3 : 1.0;
+        const isTransparent = showTipToTail;
 
-        let netV = new THREE.Vector3(0, 0, 0);
-        const firstEN = document.getElementById('enO0') ? parseFloat(document.getElementById('enO0').value) : 3.0;
+        const centerRad = (5.0 - enC) * 0.3;
+        molecule.add(new THREE.Mesh(
+            new THREE.SphereGeometry(centerRad, 32, 32), 
+            new THREE.MeshStandardMaterial({ color: 0x292F36, transparent: isTransparent, opacity: opacityCenter })
+        ));
+        if(!showTipToTail) addLabel("อะตอมกลาง ("+enC.toFixed(1)+")", new THREE.Vector3(0,0,0), centerRad);
+
+        let visualVectors = []; // เก็บข้อมูลเวกเตอร์เพื่อใช้วาดหางต่อหัว
+        let netVisualVector = new THREE.Vector3(0, 0, 0);
 
         data.x.forEach((posArr, i) => {
             const enO = parseFloat(document.getElementById('enO'+i).value);
+            document.getElementById('enO'+i+'_val').innerText = enO.toFixed(1);
             const pos = new THREE.Vector3(...posArr).multiplyScalar(bondL);
             const oRad = (5.0 - enO) * 0.3;
-            const color = (enO !== firstEN) ? 0xA41F13 : 0x8F7A6E;
+            const color = (enO !== 3.0) ? 0xA41F13 : 0x8F7A6E;
 
-            const atomMesh = new THREE.Mesh(new THREE.SphereGeometry(oRad, 32, 32), new THREE.MeshStandardMaterial({ color: color }));
+            // วาดอะตอมล้อมรอบ
+            const atomMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(oRad, 32, 32), 
+                new THREE.MeshStandardMaterial({ color: color, transparent: isTransparent, opacity: opacityAtom })
+            );
             atomMesh.position.copy(pos);
             molecule.add(atomMesh);
-            addLabel((i+1)+" ("+enO.toFixed(1)+")", pos, oRad);
+            if(!showTipToTail) addLabel((i+1)+" ("+enO.toFixed(1)+")", pos, oRad);
 
-            const bond = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, pos.length(), 12), new THREE.MeshStandardMaterial({ color: 0x292F36 }));
+            // วาดก้านพันธะ
+            const bond = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.05, pos.length(), 12), 
+                new THREE.MeshStandardMaterial({ color: 0x292F36, transparent: isTransparent, opacity: opacityAtom })
+            );
             bond.position.copy(pos.clone().multiplyScalar(0.5));
             bond.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), pos.clone().normalize());
             molecule.add(bond);
 
+            // คำนวณเวกเตอร์ย่อย
             const diff = enO - enC;
             if (Math.abs(diff) > 0.01) {
                 const vDir = diff > 0 ? pos.clone().normalize() : pos.clone().normalize().negate();
-                molecule.add(createArrow(vDir, (diff > 0 ? new THREE.Vector3(0,0,0) : pos), Math.abs(diff) * 2.5, 0x6c5ce7, 0.06));
-                netV.add(vDir.clone().multiplyScalar(Math.abs(diff)));
+                const startPos = diff > 0 ? new THREE.Vector3(0,0,0) : pos;
+                const vLength = Math.abs(diff) * 2.5; // Scale ความยาวลูกศร
+                const vVec = vDir.clone().multiplyScalar(vLength);
+                
+                visualVectors.push({ dir: vDir, start: startPos, len: vLength, vec: vVec });
+                netVisualVector.add(vVec);
             }
         });
 
+        // วาด Lone Pairs
         data.e.forEach(posArr => {
             const ePos = new THREE.Vector3(...posArr).multiplyScalar(bondL * 0.5);
-            molecule.add(new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), new THREE.MeshStandardMaterial({ color: 0x004d40, transparent: true, opacity: 0.4, wireframe: true })));
-            molecule.children[molecule.children.length - 1].position.copy(ePos);
+            const lobe = new THREE.Mesh(
+                new THREE.SphereGeometry(0.65, 16, 16), 
+                new THREE.MeshStandardMaterial({ color: 0x004d40, transparent: true, opacity: showTipToTail ? 0.1 : 0.4, wireframe: true })
+            );
+            lobe.position.copy(ePos);
+            molecule.add(lobe);
         });
 
-        const st = document.getElementById('status');
-        if (netV.length() > 0.1) {
-            molecule.add(createArrow(netV.clone().normalize(), new THREE.Vector3(0,0,0), netV.length()*1.2 + 1.5, 0xff9100, 0.12));
-            st.innerText = "สภาพขั้ว: มีขั้ว"; st.style.background = "rgba(255, 243, 224, 0.8)"; st.style.color="#e65100";
+        // --- ระบบวาดลูกศรเวกเตอร์ (โหมดปกติ vs โหมดหางต่อหัว) ---
+        if (showTipToTail) {
+            let currentOrigin = new THREE.Vector3(0,0,0);
+            
+            // วาดลูกศรย่อยต่อกัน
+            visualVectors.forEach((vv, idx) => {
+                molecule.add(createArrow(vv.dir, currentOrigin, vv.len, 0x6c5ce7, 0.08));
+                
+                // สร้างจุดเชื่อม (ข้อต่อ)
+                const joint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({color: 0x292F36}));
+                joint.position.copy(currentOrigin);
+                molecule.add(joint);
+                
+                currentOrigin.add(vv.vec); // ย้ายจุดเริ่มต้นไปที่ปลายลูกศรเดิม
+            });
+
+            // วาดจุดปลายสุด
+            if(visualVectors.length > 0) {
+                const endJoint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({color: 0xff9100}));
+                endJoint.position.copy(currentOrigin);
+                molecule.add(endJoint);
+            }
+
+            // วาดเวกเตอร์ลัพธ์ (จากจุดศูนย์กลางไปหาปลายลูกศรสุดท้าย)
+            if (netVisualVector.length() > 0.1) {
+                molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0,0,0), netVisualVector.length(), 0xff9100, 0.15));
+            }
+
         } else {
-            st.innerText = "สภาพขั้ว: ไม่มีขั้ว"; st.style.background = "rgba(232, 245, 233, 0.8)"; st.style.color="#2e7d32";
+            // โหมดปกติ (แผ่ออกจากอะตอม)
+            visualVectors.forEach(vv => {
+                molecule.add(createArrow(vv.dir, vv.start, vv.len, 0x6c5ce7, 0.06));
+            });
+            // เวกเตอร์ลัพธ์ตรงกลาง
+            if (netVisualVector.length() > 0.1) {
+                // ปรับความยาวลูกศรลัพธ์ให้ดูสวยงามในโหมดปกติ
+                molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0,0,0), netVisualVector.length() * 0.6 + 1.2, 0xff9100, 0.12));
+            }
+        }
+
+        // อัปเดตกล่องสถานะ
+        const st = document.getElementById('status');
+        if (netVisualVector.length() > 0.1) {
+            st.innerText = "สภาพขั้ว: มีขั้ว (Polar)"; 
+            st.style.background = "rgba(255, 243, 224, 0.9)"; 
+            st.style.color="#d35400";
+            st.style.borderColor = "#ff9f43";
+        } else {
+            st.innerText = "สภาพขั้ว: ไม่มีขั้ว (หักล้างเป็น 0)"; 
+            st.style.background = "rgba(232, 245, 233, 0.9)"; 
+            st.style.color="#27ae60";
+            st.style.borderColor = "#2ecc71";
         }
     }
 
+    // ฟังก์ชันสร้างลูกศร (ปรับให้หัวลูกศรสัมพันธ์กับความยาว)
     function createArrow(dir, origin, length, color, thick) {
-        const g = new THREE.Group(); const hL = 0.6, sL = Math.max(0.1, length - hL);
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(thick, thick, sL, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
-        shaft.position.y = sL/2; shaft.renderOrder = 100; g.add(shaft);
-        const head = new THREE.Mesh(new THREE.ConeGeometry(thick*3, hL, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
+        const g = new THREE.Group(); 
+        const hL = Math.min(0.6, length * 0.4); // ถ้าลูกศรสั้นมาก หัวจะเล็กลงตาม
+        const sL = length - hL;
+        if (sL > 0) {
+            const shaft = new THREE.Mesh(new THREE.CylinderGeometry(thick, thick, sL, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
+            shaft.position.y = sL/2; shaft.renderOrder = 100; g.add(shaft);
+        }
+        const head = new THREE.Mesh(new THREE.ConeGeometry(thick*3.5, hL, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
         head.position.y = sL+hL/2; head.renderOrder = 101; g.add(head);
         g.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
         g.position.copy(origin); return g;
@@ -363,7 +472,7 @@
             const lp = new THREE.Vector3(parseFloat(el.dataset.x), parseFloat(el.dataset.y), parseFloat(el.dataset.z));
             const wp = lp.applyMatrix4(molecule.matrixWorld); wp.project(camera);
             el.style.left = (wp.x * .5 + .5) * window.innerWidth + 'px';
-            el.style.top = (wp.y * -.5 + .5) * window.innerHeight - (parseFloat(el.dataset.rad)*50+20) + 'px';
+            el.style.top = (wp.y * -.5 + .5) * window.innerHeight - (parseFloat(el.dataset.rad)*50+15) + 'px';
             el.style.display = wp.z > 1 ? 'none' : 'block';
         });
         renderer.render(scene, camera);
