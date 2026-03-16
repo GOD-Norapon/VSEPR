@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>บรรลุ VSEPR แบบ Pro Max</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -63,7 +64,6 @@
         button { width: 100%; padding: 10px; border-radius: 12px; border: none; background: var(--charcoal); color: white; font-family: 'Prompt'; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 5px; font-size: 12px; }
         button:active { transform: scale(0.98); }
 
-        /* ปุ่มพิเศษสำหรับโหมดเวกเตอร์ */
         #btn-vector {
             background: var(--vector-blue);
             font-size: 13px;
@@ -101,13 +101,16 @@
             z-index: 50; border: 1px solid #ddd;
         }
 
-        #instruction-hint { position: fixed; bottom: 20px; right: 20px; font-size: 11px; color: #888; text-align: right; pointer-events: none; z-index: 90; }
+        #instruction-hint { position: fixed; bottom: 20px; right: 20px; font-size: 11px; color: #888; text-align: right; pointer-events: none; z-index: 90; line-height: 1.4; }
         @media (max-width: 600px) { #instruction-hint { top: 60px; bottom: auto; right: 20px; } }
     </style>
 </head>
 <body>
 
-<div id="instruction-hint">1 นิ้ว: หมุน | 2 นิ้ว: เลื่อน/ซูม</div>
+<div id="instruction-hint">
+    <b>PC:</b> คลิกซ้ายหมุน | คลิกขวาเลื่อน | สกอร์ลซูม<br>
+    <b>Mobile:</b> 1 นิ้วหมุน | 2 นิ้วเลื่อน/ซูม
+</div>
 <button id="mobile-toggle" onclick="toggleUI()">ซ่อน/แสดงเมนู</button>
 
 <div id="ui">
@@ -150,7 +153,6 @@
         <button style="background:var(--deep-red);" onclick="resetEN()">รีเซ็ตค่า EN ทั้งหมด</button>
     </div>
 
-    <!-- ปุ่มใหม่สำหรับโหมดรวมเวกเตอร์ -->
     <button id="btn-vector" onclick="toggleVectorMode()">📐 แสดงการรวมเวกเตอร์ (หางต่อหัว)</button>
 
     <div id="outer_controls" style="margin-top:10px;"></div>
@@ -162,10 +164,8 @@
 
 <script>
     let scene, camera, renderer, molecule;
-    let isDragging = false, isPanning = false;
-    let prevX = 0, prevY = 0, zoom = 10;
-    let initialPinchDist = 0;
-    let showTipToTail = false; // ตัวแปรสถานะโหมดเวกเตอร์
+    let controls; // ใช้ OrbitControls แทนตัวแปรจับเมาส์เดิม
+    let showTipToTail = false; 
     const labelsDiv = document.getElementById('labels-container');
 
     const V = {
@@ -211,71 +211,31 @@
         molecule = new THREE.Group();
         scene.add(molecule);
 
+        // --- เริ่มต้นใช้งาน OrbitControls ---
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // เปิดความหนืด ทำให้หมุนสมูทมีน้ำหนัก
+        controls.dampingFactor = 0.05; 
+        
+        // ตั้งค่าปุ่มเมาส์ให้ชัดเจน
+        controls.mouseButtons = {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.PAN
+        };
+        controls.saveState(); // บันทึกมุมกล้องเริ่มต้นไว้
+
         const uiElement = document.getElementById('ui');
         ['touchstart', 'touchmove', 'touchend', 'mousedown', 'wheel'].forEach(evt => {
             uiElement.addEventListener(evt, (e) => e.stopPropagation(), {passive: false});
         });
 
-        window.addEventListener('mousedown', (e) => {
-            if (e.button === 0) isDragging = true;
-            if (e.button === 2 || e.button === 1) isPanning = true;
-            prevX = e.clientX; prevY = e.clientY;
-        });
-        window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
+        // บล็อคเมนูคลิกขวาของเบราว์เซอร์ เพื่อให้ใช้คลิกขวาเลื่อนตำแหน่งโมเลกุลได้
         window.addEventListener('contextmenu', (e) => e.preventDefault());
-        window.addEventListener('mousemove', handleMove);
-        
-        window.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
-            } else if (e.touches.length === 2) {
-                isPanning = true;
-                initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                prevX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                prevY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-            }
-        }, {passive: false});
 
-        window.addEventListener('touchmove', handleTouch, {passive: false});
-        window.addEventListener('touchend', () => { isDragging = false; isPanning = false; initialPinchDist = 0; });
-        window.addEventListener('wheel', (e) => { zoom = Math.max(3, Math.min(30, zoom + e.deltaY * 0.01)); camera.position.z = zoom; });
         window.addEventListener('resize', onWindowResize);
 
         initUI();
         animate();
-    }
-
-    function handleMove(e) {
-        if (isDragging) {
-            molecule.rotation.y += (e.clientX - prevX) * 0.01;
-            molecule.rotation.x += (e.clientY - prevY) * 0.01;
-        } else if (isPanning) {
-            molecule.position.x += (e.clientX - prevX) * 0.01 * (zoom/10);
-            molecule.position.y -= (e.clientY - prevY) * 0.01 * (zoom/10);
-        }
-        prevX = e.clientX; prevY = e.clientY;
-    }
-
-    function handleTouch(e) {
-        if (isDragging && e.touches.length === 1) {
-            const dX = e.touches[0].clientX - prevX; const dY = e.touches[0].clientY - prevY;
-            molecule.rotation.y += dX * 0.01; molecule.rotation.x += dY * 0.01;
-            prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
-        } else if (isPanning && e.touches.length === 2) {
-            const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            if (initialPinchDist > 0) {
-                const pinchScale = currentDist / initialPinchDist;
-                zoom = Math.max(3, Math.min(30, zoom / pinchScale));
-                camera.position.z = zoom;
-            }
-            initialPinchDist = currentDist;
-            const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-            const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-            const dX = centerX - prevX; const dY = centerY - prevY;
-            molecule.position.x += dX * 0.01 * (zoom/10);
-            molecule.position.y -= dY * 0.01 * (zoom/10);
-            prevX = centerX; prevY = centerY;
-        }
     }
 
     function onWindowResize() {
@@ -285,11 +245,19 @@
     }
 
     function toggleUI() { document.getElementById('ui').classList.toggle('hidden'); }
-    function resetRotation() { molecule.rotation.set(0, 0, 0); }
-    function resetPosition() { molecule.position.set(0, 0, 0); }
+    
+    // ปรับปรุงฟังก์ชันปุ่มรีเซ็ต ให้ทำงานร่วมกับ OrbitControls
+    function resetRotation() { 
+        controls.reset();
+        molecule.rotation.set(0, 0, 0); 
+    }
+    function resetPosition() { 
+        controls.target.set(0, 0, 0); 
+        controls.update();
+    }
+    
     function resetEN() { document.getElementById('enC').value = 2.5; document.querySelectorAll('.en-outer').forEach(i => i.value = 3.0); update(); }
 
-    // ฟังก์ชันสลับโหมดเวกเตอร์หางต่อหัว
     function toggleVectorMode() {
         showTipToTail = !showTipToTail;
         const btn = document.getElementById('btn-vector');
@@ -300,7 +268,7 @@
             btn.classList.remove('active');
             btn.innerHTML = "📐 แสดงการรวมเวกเตอร์ (หางต่อหัว)";
         }
-        update(); // อัปเดตการแสดงผลทันที
+        update(); 
     }
 
     function initUI() {
@@ -326,7 +294,6 @@
 
         const data = SHAPES[shapeKey];
         
-        // ความโปร่งใสของอะตอมในโหมดปกติ vs โหมดรวมเวกเตอร์
         const opacityAtom = showTipToTail ? 0.15 : 1.0;
         const opacityCenter = showTipToTail ? 0.3 : 1.0;
         const isTransparent = showTipToTail;
@@ -338,7 +305,7 @@
         ));
         if(!showTipToTail) addLabel("อะตอมกลาง ("+enC.toFixed(1)+")", new THREE.Vector3(0,0,0), centerRad);
 
-        let visualVectors = []; // เก็บข้อมูลเวกเตอร์เพื่อใช้วาดหางต่อหัว
+        let visualVectors = []; 
         let netVisualVector = new THREE.Vector3(0, 0, 0);
 
         data.x.forEach((posArr, i) => {
@@ -348,7 +315,6 @@
             const oRad = (5.0 - enO) * 0.3;
             const color = (enO !== 3.0) ? 0xA41F13 : 0x8F7A6E;
 
-            // วาดอะตอมล้อมรอบ
             const atomMesh = new THREE.Mesh(
                 new THREE.SphereGeometry(oRad, 32, 32), 
                 new THREE.MeshStandardMaterial({ color: color, transparent: isTransparent, opacity: opacityAtom })
@@ -357,7 +323,6 @@
             molecule.add(atomMesh);
             if(!showTipToTail) addLabel((i+1)+" ("+enO.toFixed(1)+")", pos, oRad);
 
-            // วาดก้านพันธะ
             const bond = new THREE.Mesh(
                 new THREE.CylinderGeometry(0.05, 0.05, pos.length(), 12), 
                 new THREE.MeshStandardMaterial({ color: 0x292F36, transparent: isTransparent, opacity: opacityAtom })
@@ -366,12 +331,11 @@
             bond.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), pos.clone().normalize());
             molecule.add(bond);
 
-            // คำนวณเวกเตอร์ย่อย
             const diff = enO - enC;
             if (Math.abs(diff) > 0.01) {
                 const vDir = diff > 0 ? pos.clone().normalize() : pos.clone().normalize().negate();
                 const startPos = diff > 0 ? new THREE.Vector3(0,0,0) : pos;
-                const vLength = Math.abs(diff) * 2.5; // Scale ความยาวลูกศร
+                const vLength = Math.abs(diff) * 2.5; 
                 const vVec = vDir.clone().multiplyScalar(vLength);
                 
                 visualVectors.push({ dir: vDir, start: startPos, len: vLength, vec: vVec });
@@ -379,7 +343,6 @@
             }
         });
 
-        // วาด Lone Pairs
         data.e.forEach(posArr => {
             const ePos = new THREE.Vector3(...posArr).multiplyScalar(bondL * 0.5);
             const lobe = new THREE.Mesh(
@@ -390,47 +353,85 @@
             molecule.add(lobe);
         });
 
-        // --- ระบบวาดลูกศรเวกเตอร์ (โหมดปกติ vs โหมดหางต่อหัว) ---
+        // --- ระบบวาดลูกศรเวกเตอร์ ---
         if (showTipToTail) {
-            let currentOrigin = new THREE.Vector3(0,0,0);
+            let currentMathOrigin = new THREE.Vector3(0,0,0);
+            let currentVisualOrigin = new THREE.Vector3(0,0,0);
+            let prevVisualHead = new THREE.Vector3(0,0,0);
             
-            // วาดลูกศรย่อยต่อกัน
             visualVectors.forEach((vv, idx) => {
-                molecule.add(createArrow(vv.dir, currentOrigin, vv.len, 0x6c5ce7, 0.08));
+                let shift = new THREE.Vector3(0,0,0);
                 
-                // สร้างจุดเชื่อม (ข้อต่อ)
+                // ตรวจจับลูกศรที่ทับซ้อน (ขนานหรือสวนทางกัน)
+                if (idx > 0) {
+                    let prevDir = visualVectors[idx-1].dir;
+                    let dot = vv.dir.dot(prevDir);
+                    if (Math.abs(dot) > 0.8) {
+                        // คำนวณเวกเตอร์ตั้งฉากเพื่อขยับเยื้อง (Offset)
+                        let ref = new THREE.Vector3(0, 0, 1);
+                        if (Math.abs(vv.dir.z) > 0.8) ref.set(0, 1, 0);
+                        let perp = new THREE.Vector3().crossVectors(vv.dir, ref).normalize();
+                        shift = perp.multiplyScalar(0.35); // ระยะซ้อนทับกัน
+                    }
+                    
+                    currentVisualOrigin.add(shift);
+                    
+                    // สร้างเส้นเชื่อมโยงระยะที่เยื้องออกมา
+                    if (shift.length() > 0) {
+                        const link = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.02, 0.02, shift.length(), 8),
+                            new THREE.MeshBasicMaterial({color: 0x888888})
+                        );
+                        link.position.copy(prevVisualHead.clone().add(currentVisualOrigin).multiplyScalar(0.5));
+                        link.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), shift.clone().normalize());
+                        molecule.add(link);
+                    }
+                }
+
+                molecule.add(createArrow(vv.dir, currentVisualOrigin, vv.len, 0x6c5ce7, 0.08));
+                
                 const joint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({color: 0x292F36}));
-                joint.position.copy(currentOrigin);
+                joint.position.copy(currentVisualOrigin);
                 molecule.add(joint);
                 
-                currentOrigin.add(vv.vec); // ย้ายจุดเริ่มต้นไปที่ปลายลูกศรเดิม
+                currentVisualOrigin.add(vv.vec);
+                currentMathOrigin.add(vv.vec);
+                prevVisualHead.copy(currentVisualOrigin);
             });
 
-            // วาดจุดปลายสุด
             if(visualVectors.length > 0) {
                 const endJoint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({color: 0xff9100}));
-                endJoint.position.copy(currentOrigin);
+                endJoint.position.copy(currentVisualOrigin);
                 molecule.add(endJoint);
             }
 
-            // วาดเวกเตอร์ลัพธ์ (จากจุดศูนย์กลางไปหาปลายลูกศรสุดท้าย)
+            // เวกเตอร์ลัพธ์ที่แท้จริง
             if (netVisualVector.length() > 0.1) {
                 molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0,0,0), netVisualVector.length(), 0xff9100, 0.15));
             }
 
+            // เส้นประโยงจากจุดภาพวาด กลับไปหาจุดความจริงทางคณิตศาสตร์
+            if (currentVisualOrigin.distanceTo(currentMathOrigin) > 0.05 && visualVectors.length > 0) {
+                const points = [currentVisualOrigin, currentMathOrigin];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const material = new THREE.LineDashedMaterial({
+                    color: 0xff9100, linewidth: 2, scale: 1, dashSize: 0.15, gapSize: 0.1
+                });
+                const line = new THREE.Line(geometry, material);
+                line.computeLineDistances(); // จำเป็นสำหรับเส้นประ
+                molecule.add(line);
+            }
+
         } else {
-            // โหมดปกติ (แผ่ออกจากอะตอม)
+            // โหมดปกติ
             visualVectors.forEach(vv => {
                 molecule.add(createArrow(vv.dir, vv.start, vv.len, 0x6c5ce7, 0.06));
             });
-            // เวกเตอร์ลัพธ์ตรงกลาง
             if (netVisualVector.length() > 0.1) {
-                // ปรับความยาวลูกศรลัพธ์ให้ดูสวยงามในโหมดปกติ
                 molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0,0,0), netVisualVector.length() * 0.6 + 1.2, 0xff9100, 0.12));
             }
         }
 
-        // อัปเดตกล่องสถานะ
         const st = document.getElementById('status');
         if (netVisualVector.length() > 0.1) {
             st.innerText = "สภาพขั้ว: มีขั้ว (Polar)"; 
@@ -445,10 +446,9 @@
         }
     }
 
-    // ฟังก์ชันสร้างลูกศร (ปรับให้หัวลูกศรสัมพันธ์กับความยาว)
     function createArrow(dir, origin, length, color, thick) {
         const g = new THREE.Group(); 
-        const hL = Math.min(0.6, length * 0.4); // ถ้าลูกศรสั้นมาก หัวจะเล็กลงตาม
+        const hL = Math.min(0.6, length * 0.4); 
         const sL = length - hL;
         if (sL > 0) {
             const shaft = new THREE.Mesh(new THREE.CylinderGeometry(thick, thick, sL, 12), new THREE.MeshStandardMaterial({ color: color, depthTest: false }));
@@ -467,7 +467,9 @@
     }
 
     function animate() {
-        requestAnimationFrame(animate); molecule.updateMatrixWorld();
+        requestAnimationFrame(animate); 
+        controls.update(); // อัปเดตความสมูทของกล้องในทุกๆ เฟรม
+        molecule.updateMatrixWorld();
         document.querySelectorAll('.atom-label').forEach(el => {
             const lp = new THREE.Vector3(parseFloat(el.dataset.x), parseFloat(el.dataset.y), parseFloat(el.dataset.z));
             const wp = lp.applyMatrix4(molecule.matrixWorld); wp.project(camera);
