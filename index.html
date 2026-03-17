@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>บรรลุ VSEPR แบบ Pro Max</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -39,19 +38,30 @@
             z-index: 200; 
             max-height: 85vh; 
             overflow-y: auto;
-            transition: transform 0.4s ease;
+            transition: transform 0.4s ease, opacity 0.4s ease;
+        }
+
+        #ui.hidden {
+            transform: translateX(calc(-100% - 50px));
+            opacity: 0;
+            pointer-events: none;
         }
 
         @media (max-width: 600px) {
             #ui { width: calc(100% - 40px); top: auto; bottom: 20px; left: 20px; max-height: 45vh; padding: 15px; }
-            #ui.hidden { transform: translateY(calc(100% + 50px)); }
-            #mobile-toggle { display: block !important; }
+            #ui.hidden { transform: translateY(calc(100% + 50px)); opacity: 0; }
+            #menu-toggle { left: 50% !important; transform: translateX(-50%) !important; }
         }
 
-        #mobile-toggle {
-            display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        #menu-toggle {
+            position: fixed; bottom: 20px; left: 20px;
             z-index: 210; background: var(--charcoal); color: white; border: none; padding: 10px 20px;
             border-radius: 30px; font-family: 'Prompt'; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer; transition: 0.3s;
+        }
+
+        #menu-toggle:hover {
+            background: #000; transform: scale(1.05);
         }
 
         h2 { margin: 0 0 10px; color: var(--charcoal); text-align: center; font-size: 18px; font-weight: 600; }
@@ -64,6 +74,7 @@
         button { width: 100%; padding: 10px; border-radius: 12px; border: none; background: var(--charcoal); color: white; font-family: 'Prompt'; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 5px; font-size: 12px; }
         button:active { transform: scale(0.98); }
 
+        /* ปุ่มพิเศษสำหรับโหมดเวกเตอร์ */
         #btn-vector {
             background: var(--vector-blue);
             font-size: 13px;
@@ -101,17 +112,21 @@
             z-index: 50; border: 1px solid #ddd;
         }
 
-        #instruction-hint { position: fixed; bottom: 20px; right: 20px; font-size: 11px; color: #888; text-align: right; pointer-events: none; z-index: 90; line-height: 1.4; }
+        /* ป้ายกำกับลอยตัวสำหรับเวกเตอร์รวม */
+        .vector-diagram-label {
+            position: absolute; color: #1e3799; font-weight: bold; font-size: 14px;
+            pointer-events: none; transform: translate(-50%, -50%); z-index: 40;
+            background: rgba(240, 248, 255, 0.9); padding: 5px 10px; border-radius: 8px; border: 1px dashed #1e3799;
+        }
+
+        #instruction-hint { position: fixed; bottom: 20px; right: 20px; font-size: 11px; color: #888; text-align: right; pointer-events: none; z-index: 90; }
         @media (max-width: 600px) { #instruction-hint { top: 60px; bottom: auto; right: 20px; } }
     </style>
 </head>
 <body>
 
-<div id="instruction-hint">
-    <b>PC:</b> คลิกซ้ายหมุน | คลิกขวาเลื่อน | สกอร์ลซูม<br>
-    <b>Mobile:</b> 1 นิ้วหมุน | 2 นิ้วเลื่อน/ซูม
-</div>
-<button id="mobile-toggle" onclick="toggleUI()">ซ่อน/แสดงเมนู</button>
+<div id="instruction-hint">1 นิ้ว: หมุน | 2 นิ้ว: ซูม</div>
+<button id="menu-toggle" onclick="toggleUI()">👁️ ซ่อน/แสดงเมนู</button>
 
 <div id="ui">
     <h2>บรรลุ VSEPR แบบ Pro Max</h2>
@@ -141,10 +156,7 @@
     <div class="group">
         <label>ระยะห่างพันธะ <span id="bondL_val" class="val-display">2.0</span></label>
         <input type="range" id="bondL" min="1.0" max="4.0" step="0.1" value="2.0" oninput="update()">
-        <div style="display:flex; gap:5px;">
-            <button onclick="resetRotation()">คืนค่ามุมมอง</button>
-            <button onclick="resetPosition()" style="background:#7f8fa6;">รีเซ็ตตำแหน่ง</button>
-        </div>
+        <button onclick="resetRotation()">คืนค่ามุมมอง</button>
     </div>
 
     <div class="group">
@@ -153,7 +165,7 @@
         <button style="background:var(--deep-red);" onclick="resetEN()">รีเซ็ตค่า EN ทั้งหมด</button>
     </div>
 
-    <button id="btn-vector" onclick="toggleVectorMode()">📐 แสดงการรวมเวกเตอร์ (หางต่อหัว)</button>
+    <button id="btn-vector" onclick="toggleVectorMode()">📐 แสดงการรวมเวกเตอร์แบบแยกส่วน</button>
 
     <div id="outer_controls" style="margin-top:10px;"></div>
     <div id="status">Ready</div>
@@ -164,7 +176,9 @@
 
 <script>
     let scene, camera, renderer, molecule;
-    let controls; // ใช้ OrbitControls แทนตัวแปรจับเมาส์เดิม
+    let isDragging = false;
+    let prevX = 0, prevY = 0, zoom = 10;
+    let initialPinchDist = 0;
     let showTipToTail = false; 
     const labelsDiv = document.getElementById('labels-container');
 
@@ -211,31 +225,69 @@
         molecule = new THREE.Group();
         scene.add(molecule);
 
-        // --- เริ่มต้นใช้งาน OrbitControls ---
-        controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; // เปิดความหนืด ทำให้หมุนสมูทมีน้ำหนัก
-        controls.dampingFactor = 0.05; 
-        
-        // ตั้งค่าปุ่มเมาส์ให้ชัดเจน
-        controls.mouseButtons = {
-            LEFT: THREE.MOUSE.ROTATE,
-            MIDDLE: THREE.MOUSE.DOLLY,
-            RIGHT: THREE.MOUSE.PAN
-        };
-        controls.saveState(); // บันทึกมุมกล้องเริ่มต้นไว้
-
         const uiElement = document.getElementById('ui');
         ['touchstart', 'touchmove', 'touchend', 'mousedown', 'wheel'].forEach(evt => {
             uiElement.addEventListener(evt, (e) => e.stopPropagation(), {passive: false});
         });
 
-        // บล็อคเมนูคลิกขวาของเบราว์เซอร์ เพื่อให้ใช้คลิกขวาเลื่อนตำแหน่งโมเลกุลได้
+        // ระบบควบคุมแบบง่าย (หมุนอย่างเดียว ไม่มี Pan)
+        window.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // คลิกซ้ายเท่านั้นที่ให้ทำงาน
+                isDragging = true;
+                prevX = e.clientX; 
+                prevY = e.clientY;
+            }
+        });
+        window.addEventListener('mouseup', () => { isDragging = false; });
         window.addEventListener('contextmenu', (e) => e.preventDefault());
+        window.addEventListener('mousemove', handleMove);
+        
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true; 
+                prevX = e.touches[0].clientX; 
+                prevY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                // 2 นิ้วใช้สำหรับซูมอย่างเดียว
+                initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            }
+        }, {passive: false});
 
+        window.addEventListener('touchmove', handleTouch, {passive: false});
+        window.addEventListener('touchend', () => { isDragging = false; initialPinchDist = 0; });
+        window.addEventListener('wheel', (e) => { zoom = Math.max(3, Math.min(30, zoom + e.deltaY * 0.01)); camera.position.z = zoom; });
         window.addEventListener('resize', onWindowResize);
 
         initUI();
         animate();
+    }
+
+    function handleMove(e) {
+        if (isDragging) {
+            molecule.rotation.y += (e.clientX - prevX) * 0.01;
+            molecule.rotation.x += (e.clientY - prevY) * 0.01;
+        }
+        prevX = e.clientX; prevY = e.clientY;
+    }
+
+    function handleTouch(e) {
+        if (isDragging && e.touches.length === 1) {
+            const dX = e.touches[0].clientX - prevX; 
+            const dY = e.touches[0].clientY - prevY;
+            molecule.rotation.y += dX * 0.01; 
+            molecule.rotation.x += dY * 0.01;
+            prevX = e.touches[0].clientX; 
+            prevY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+            // ซูม (Pinch) อย่างเดียว ไม่มีการย้ายตำแหน่ง (Pan)
+            const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            if (initialPinchDist > 0) {
+                const pinchScale = currentDist / initialPinchDist;
+                zoom = Math.max(3, Math.min(30, zoom / pinchScale));
+                camera.position.z = zoom;
+            }
+            initialPinchDist = currentDist;
+        }
     }
 
     function onWindowResize() {
@@ -245,17 +297,11 @@
     }
 
     function toggleUI() { document.getElementById('ui').classList.toggle('hidden'); }
-    
-    // ปรับปรุงฟังก์ชันปุ่มรีเซ็ต ให้ทำงานร่วมกับ OrbitControls
     function resetRotation() { 
-        controls.reset();
         molecule.rotation.set(0, 0, 0); 
+        zoom = (window.innerWidth < 600) ? 16 : 11;
+        camera.position.z = zoom;
     }
-    function resetPosition() { 
-        controls.target.set(0, 0, 0); 
-        controls.update();
-    }
-    
     function resetEN() { document.getElementById('enC').value = 2.5; document.querySelectorAll('.en-outer').forEach(i => i.value = 3.0); update(); }
 
     function toggleVectorMode() {
@@ -264,9 +310,12 @@
         if (showTipToTail) {
             btn.classList.add('active');
             btn.innerHTML = "❌ ปิดโหมดรวมเวกเตอร์";
+            // ระบบอัตโนมัติ: ขยับศูนย์กลางโมเลกุลไปทางซ้ายเพื่อเปิดพื้นที่ด้านขวา
+            molecule.position.x = window.innerWidth < 600 ? -1.5 : -3; 
         } else {
             btn.classList.remove('active');
-            btn.innerHTML = "📐 แสดงการรวมเวกเตอร์ (หางต่อหัว)";
+            btn.innerHTML = "📐 แสดงการรวมเวกเตอร์แบบแยกส่วน";
+            molecule.position.x = 0; // กลับมาตรงกลาง
         }
         update(); 
     }
@@ -294,18 +343,14 @@
 
         const data = SHAPES[shapeKey];
         
-        const opacityAtom = showTipToTail ? 0.15 : 1.0;
-        const opacityCenter = showTipToTail ? 0.3 : 1.0;
-        const isTransparent = showTipToTail;
-
         const centerRad = (5.0 - enC) * 0.3;
         molecule.add(new THREE.Mesh(
             new THREE.SphereGeometry(centerRad, 32, 32), 
-            new THREE.MeshStandardMaterial({ color: 0x292F36, transparent: isTransparent, opacity: opacityCenter })
+            new THREE.MeshStandardMaterial({ color: 0x292F36 })
         ));
-        if(!showTipToTail) addLabel("อะตอมกลาง ("+enC.toFixed(1)+")", new THREE.Vector3(0,0,0), centerRad);
+        addLabel("อะตอมกลาง ("+enC.toFixed(1)+")", new THREE.Vector3(0,0,0), centerRad, 'atom-label');
 
-        let visualVectors = []; 
+        let visualVectors = [];
         let netVisualVector = new THREE.Vector3(0, 0, 0);
 
         data.x.forEach((posArr, i) => {
@@ -317,15 +362,15 @@
 
             const atomMesh = new THREE.Mesh(
                 new THREE.SphereGeometry(oRad, 32, 32), 
-                new THREE.MeshStandardMaterial({ color: color, transparent: isTransparent, opacity: opacityAtom })
+                new THREE.MeshStandardMaterial({ color: color })
             );
             atomMesh.position.copy(pos);
             molecule.add(atomMesh);
-            if(!showTipToTail) addLabel((i+1)+" ("+enO.toFixed(1)+")", pos, oRad);
+            addLabel((i+1)+" ("+enO.toFixed(1)+")", pos, oRad, 'atom-label');
 
             const bond = new THREE.Mesh(
                 new THREE.CylinderGeometry(0.05, 0.05, pos.length(), 12), 
-                new THREE.MeshStandardMaterial({ color: 0x292F36, transparent: isTransparent, opacity: opacityAtom })
+                new THREE.MeshStandardMaterial({ color: 0x292F36 })
             );
             bond.position.copy(pos.clone().multiplyScalar(0.5));
             bond.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), pos.clone().normalize());
@@ -347,88 +392,52 @@
             const ePos = new THREE.Vector3(...posArr).multiplyScalar(bondL * 0.5);
             const lobe = new THREE.Mesh(
                 new THREE.SphereGeometry(0.65, 16, 16), 
-                new THREE.MeshStandardMaterial({ color: 0x004d40, transparent: true, opacity: showTipToTail ? 0.1 : 0.4, wireframe: true })
+                new THREE.MeshStandardMaterial({ color: 0x004d40, transparent: true, opacity: 0.4, wireframe: true })
             );
             lobe.position.copy(ePos);
             molecule.add(lobe);
         });
 
-        // --- ระบบวาดลูกศรเวกเตอร์ ---
-        if (showTipToTail) {
-            let currentMathOrigin = new THREE.Vector3(0,0,0);
-            let currentVisualOrigin = new THREE.Vector3(0,0,0);
-            let prevVisualHead = new THREE.Vector3(0,0,0);
-            
-            visualVectors.forEach((vv, idx) => {
-                let shift = new THREE.Vector3(0,0,0);
-                
-                // ตรวจจับลูกศรที่ทับซ้อน (ขนานหรือสวนทางกัน)
-                if (idx > 0) {
-                    let prevDir = visualVectors[idx-1].dir;
-                    let dot = vv.dir.dot(prevDir);
-                    if (Math.abs(dot) > 0.8) {
-                        // คำนวณเวกเตอร์ตั้งฉากเพื่อขยับเยื้อง (Offset)
-                        let ref = new THREE.Vector3(0, 0, 1);
-                        if (Math.abs(vv.dir.z) > 0.8) ref.set(0, 1, 0);
-                        let perp = new THREE.Vector3().crossVectors(vv.dir, ref).normalize();
-                        shift = perp.multiplyScalar(0.35); // ระยะซ้อนทับกัน
-                    }
-                    
-                    currentVisualOrigin.add(shift);
-                    
-                    // สร้างเส้นเชื่อมโยงระยะที่เยื้องออกมา
-                    if (shift.length() > 0) {
-                        const link = new THREE.Mesh(
-                            new THREE.CylinderGeometry(0.02, 0.02, shift.length(), 8),
-                            new THREE.MeshBasicMaterial({color: 0x888888})
-                        );
-                        link.position.copy(prevVisualHead.clone().add(currentVisualOrigin).multiplyScalar(0.5));
-                        link.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), shift.clone().normalize());
-                        molecule.add(link);
-                    }
-                }
+        // โหมดปกติ: วาดเวกเตอร์บนโมเลกุลเสมอ
+        visualVectors.forEach(vv => {
+            molecule.add(createArrow(vv.dir, vv.start, vv.len, 0x6c5ce7, 0.06));
+        });
+        if (netVisualVector.length() > 0.1) {
+            molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0,0,0), netVisualVector.length() * 0.6 + 1.2, 0xff9100, 0.12));
+        }
 
-                molecule.add(createArrow(vv.dir, currentVisualOrigin, vv.len, 0x6c5ce7, 0.08));
+        // --- เพิ่มแผนภาพการรวมเวกเตอร์แยกด้านขวา ---
+        if (showTipToTail) {
+            // จุดเริ่มต้นของรูปหางต่อหัว (เลื่อนไปทางขวา 6 หน่วย)
+            const diagramOffset = new THREE.Vector3(5.5, 0, 0);
+            let currentOrigin = diagramOffset.clone();
+            
+            // ป้ายกำกับลอยตัวด้านบน
+            addLabel("ผลรวมเวกเตอร์", new THREE.Vector3(5.5, 3.5, 0), 0, 'vector-diagram-label');
+
+            // วาดลูกศรย่อยต่อกัน
+            visualVectors.forEach((vv, idx) => {
+                molecule.add(createArrow(vv.dir, currentOrigin, vv.len, 0x6c5ce7, 0.08));
                 
                 const joint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({color: 0x292F36}));
-                joint.position.copy(currentVisualOrigin);
+                joint.position.copy(currentOrigin);
                 molecule.add(joint);
                 
-                currentVisualOrigin.add(vv.vec);
-                currentMathOrigin.add(vv.vec);
-                prevVisualHead.copy(currentVisualOrigin);
+                currentOrigin.add(vv.vec); 
             });
 
             if(visualVectors.length > 0) {
                 const endJoint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({color: 0xff9100}));
-                endJoint.position.copy(currentVisualOrigin);
+                endJoint.position.copy(currentOrigin);
                 molecule.add(endJoint);
             }
 
-            // เวกเตอร์ลัพธ์ที่แท้จริง
+            // วาดเวกเตอร์ลัพธ์ในแผนภาพ (สีส้ม)
             if (netVisualVector.length() > 0.1) {
-                molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0,0,0), netVisualVector.length(), 0xff9100, 0.15));
-            }
-
-            // เส้นประโยงจากจุดภาพวาด กลับไปหาจุดความจริงทางคณิตศาสตร์
-            if (currentVisualOrigin.distanceTo(currentMathOrigin) > 0.05 && visualVectors.length > 0) {
-                const points = [currentVisualOrigin, currentMathOrigin];
-                const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                const material = new THREE.LineDashedMaterial({
-                    color: 0xff9100, linewidth: 2, scale: 1, dashSize: 0.15, gapSize: 0.1
-                });
-                const line = new THREE.Line(geometry, material);
-                line.computeLineDistances(); // จำเป็นสำหรับเส้นประ
-                molecule.add(line);
-            }
-
-        } else {
-            // โหมดปกติ
-            visualVectors.forEach(vv => {
-                molecule.add(createArrow(vv.dir, vv.start, vv.len, 0x6c5ce7, 0.06));
-            });
-            if (netVisualVector.length() > 0.1) {
-                molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0,0,0), netVisualVector.length() * 0.6 + 1.2, 0xff9100, 0.12));
+                molecule.add(createArrow(netVisualVector.clone().normalize(), diagramOffset, netVisualVector.length(), 0xff9100, 0.15));
+            } else if (visualVectors.length > 0) {
+                // กรณีหักล้างกันหมดพอดี
+                addLabel("หักล้างเป็น 0", diagramOffset.clone().add(new THREE.Vector3(0, -2, 0)), 0, 'vector-diagram-label');
             }
         }
 
@@ -460,17 +469,15 @@
         g.position.copy(origin); return g;
     }
 
-    function addLabel(txt, pos, rad) {
-        const d = document.createElement('div'); d.className = 'atom-label'; d.innerText = txt;
+    function addLabel(txt, pos, rad, className) {
+        const d = document.createElement('div'); d.className = className || 'atom-label'; d.innerText = txt;
         d.dataset.x = pos.x; d.dataset.y = pos.y; d.dataset.z = pos.z; d.dataset.rad = rad || 0;
         labelsDiv.appendChild(d);
     }
 
     function animate() {
-        requestAnimationFrame(animate); 
-        controls.update(); // อัปเดตความสมูทของกล้องในทุกๆ เฟรม
-        molecule.updateMatrixWorld();
-        document.querySelectorAll('.atom-label').forEach(el => {
+        requestAnimationFrame(animate); molecule.updateMatrixWorld();
+        document.querySelectorAll('.atom-label, .vector-diagram-label').forEach(el => {
             const lp = new THREE.Vector3(parseFloat(el.dataset.x), parseFloat(el.dataset.y), parseFloat(el.dataset.z));
             const wp = lp.applyMatrix4(molecule.matrixWorld); wp.project(camera);
             el.style.left = (wp.x * .5 + .5) * window.innerWidth + 'px';
