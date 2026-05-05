@@ -160,6 +160,9 @@
         <button style="background:var(--deep-red);" onclick="resetEN()">รีเซ็ตค่า EN ทั้งหมด</button>
     </div>
 
+    <!-- เพิ่มปุ่มสำหรับซ่อน/แสดงสภาพขั้ว (ให้นักเรียนทาย) -->
+    <button id="btn-polarity" onclick="togglePolarityMode()" style="background:#27ae60;">👁️ ซ่อนสภาพขั้ว (ทดสอบนักเรียน)</button>
+    
     <button id="btn-vector" onclick="toggleVectorMode()">📐 แสดงการรวมเวกเตอร์ (หางต่อหัว)</button>
 
     <div id="outer_controls" style="margin-top:10px;"></div>
@@ -175,6 +178,7 @@
     let prevX = 0, prevY = 0, zoom = 10;
     let initialPinchDist = 0;
     let showTipToTail = false; 
+    let showPolarity = true; // เพิ่มตัวแปรสถานะเปิด-ปิดสภาพขั้ว
     const labelsDiv = document.getElementById('labels-container');
 
     const V = {
@@ -305,6 +309,24 @@
     }
     function resetEN() { document.getElementById('enC').value = 2.5; document.querySelectorAll('.en-outer').forEach(i => i.value = 3.0); update(); }
 
+    // ฟังก์ชันเปิด-ปิดการแสดงสภาพขั้ว
+    function togglePolarityMode() {
+        showPolarity = !showPolarity;
+        const btn = document.getElementById('btn-polarity');
+        const btnVector = document.getElementById('btn-vector');
+        if (showPolarity) {
+            btn.innerHTML = "👁️ ซ่อนสภาพขั้ว (ทดสอบนักเรียน)";
+            btn.style.background = "#27ae60";
+            btnVector.style.display = "block"; // แสดงปุ่มรวมเวกเตอร์กลับมา
+        } else {
+            btn.innerHTML = "🙈 แสดงเฉลยสภาพขั้ว";
+            btn.style.background = "#7f8fa6";
+            btnVector.style.display = "none"; // ซ่อนปุ่มรวมเวกเตอร์ไปก่อน
+            if (showTipToTail) toggleVectorMode(); // ถ้าเปิดโหมดรวมเวกเตอร์อยู่ให้ปิดด้วย
+        }
+        update();
+    }
+
     function toggleVectorMode() {
         showTipToTail = !showTipToTail;
         const btn = document.getElementById('btn-vector');
@@ -408,53 +430,60 @@
         });
 
         // --- ระบบวาดลูกศรเวกเตอร์ ---
-        if (!showTipToTail) {
-            // โหมดปกติ: วาดเวกเตอร์บนโมเลกุลเสมอ
-            visualVectors.forEach(vv => {
-                molecule.add(createArrow(vv.dir, vv.start, vv.len, 0x6c5ce7, 0.06));
-            });
-            if (netVisualVector.length() > 0.1) {
-                molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0,0,0), netVisualVector.length() * 0.6 + 1.2, 0xff9100, 0.12));
-            }
-        } else {
-            // โหมดรวมเวกเตอร์: แสดงลูกศรหางต่อหัว "ภายในโมเลกุล (เริ่มต้นจากจุดศูนย์กลาง)"
-            let currentOrigin = new THREE.Vector3(0, 0, 0);
-            let lastOffset = new THREE.Vector3(0, 0, 0);
+        if (showPolarity) {
+            if (!showTipToTail) {
+                // โหมดปกติ: วาดเวกเตอร์บนโมเลกุลเสมอ
+                visualVectors.forEach(vv => {
+                    molecule.add(createArrow(vv.dir, vv.start, vv.len, 0x6c5ce7, 0.06));
+                });
+                if (netVisualVector.length() > 0.1) {
+                    molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0,0,0), netVisualVector.length() * 0.6 + 1.2, 0xff9100, 0.12));
+                }
+            } else {
+                // โหมดรวมเวกเตอร์: แสดงลูกศรหางต่อหัว "ภายในโมเลกุล (เริ่มต้นจากจุดศูนย์กลาง)"
+                let currentOrigin = new THREE.Vector3(0, 0, 0);
+                let lastOffset = new THREE.Vector3(0, 0, 0);
 
-            // วาดลูกศรย่อยต่อกัน
-            visualVectors.forEach((vv, idx) => {
-                // คำนวณ offset ขยับเวกเตอร์ออกด้านข้าง เพื่อไม่ให้ลูกศรที่ชี้ไป-กลับซ้อนทับกันสนิท
-                let upVec = new THREE.Vector3(0, 0, 1);
-                if (Math.abs(vv.dir.z) > 0.9) upVec.set(0, 1, 0);
-                let offset = new THREE.Vector3().crossVectors(vv.dir, upVec).normalize().multiplyScalar(0.18); // ขยับออกด้านข้าง 0.18 หน่วย
-                lastOffset = offset.clone();
-                
-                let visualOrigin = currentOrigin.clone().add(offset);
+                // วาดลูกศรย่อยต่อกัน
+                visualVectors.forEach((vv, idx) => {
+                    // คำนวณ offset ขยับเวกเตอร์ออกด้านข้าง เพื่อไม่ให้ลูกศรที่ชี้ไป-กลับซ้อนทับกันสนิท
+                    let upVec = new THREE.Vector3(0, 0, 1);
+                    if (Math.abs(vv.dir.z) > 0.9) upVec.set(0, 1, 0);
+                    let offset = new THREE.Vector3().crossVectors(vv.dir, upVec).normalize().multiplyScalar(0.18); // ขยับออกด้านข้าง 0.18 หน่วย
+                    lastOffset = offset.clone();
+                    
+                    let visualOrigin = currentOrigin.clone().add(offset);
 
-                molecule.add(createArrow(vv.dir, visualOrigin, vv.len, 0x6c5ce7, 0.08));
-                
-                const joint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({color: 0x292F36}));
-                joint.position.copy(visualOrigin);
-                molecule.add(joint);
-                
-                currentOrigin.add(vv.vec); 
-            });
+                    molecule.add(createArrow(vv.dir, visualOrigin, vv.len, 0x6c5ce7, 0.08));
+                    
+                    const joint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({color: 0x292F36}));
+                    joint.position.copy(visualOrigin);
+                    molecule.add(joint);
+                    
+                    currentOrigin.add(vv.vec); 
+                });
 
-            // ปลายสุดของการต่อลูกศร
-            if(visualVectors.length > 0) {
-                const endJoint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({color: 0xff9100}));
-                endJoint.position.copy(currentOrigin.clone().add(lastOffset));
-                molecule.add(endJoint);
-            }
+                // ปลายสุดของการต่อลูกศร
+                if(visualVectors.length > 0) {
+                    const endJoint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({color: 0xff9100}));
+                    endJoint.position.copy(currentOrigin.clone().add(lastOffset));
+                    molecule.add(endJoint);
+                }
 
-            // วาดเวกเตอร์ลัพธ์ (สีส้ม) จากจุดศูนย์กลางไปยังปลายลูกศรสุดท้ายที่แท้จริง
-            if (netVisualVector.length() > 0.1) {
-                molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0, 0, 0), netVisualVector.length(), 0xff9100, 0.15));
+                // วาดเวกเตอร์ลัพธ์ (สีส้ม) จากจุดศูนย์กลางไปยังปลายลูกศรสุดท้ายที่แท้จริง
+                if (netVisualVector.length() > 0.1) {
+                    molecule.add(createArrow(netVisualVector.clone().normalize(), new THREE.Vector3(0, 0, 0), netVisualVector.length(), 0xff9100, 0.15));
+                }
             }
         }
 
         const st = document.getElementById('status');
-        if (netVisualVector.length() > 0.1) {
+        if (!showPolarity) {
+            st.innerText = "สภาพขั้ว: ??? (กดเพื่อเฉลย)"; 
+            st.style.background = "#f1f2f6"; 
+            st.style.color="#747d8c";
+            st.style.borderColor = "#ced6e0";
+        } else if (netVisualVector.length() > 0.1) {
             st.innerText = "สภาพขั้ว: มีขั้ว (Polar)"; 
             st.style.background = "rgba(255, 243, 224, 0.9)"; 
             st.style.color="#d35400";
